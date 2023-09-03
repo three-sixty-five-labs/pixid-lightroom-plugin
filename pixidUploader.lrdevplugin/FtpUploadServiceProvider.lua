@@ -33,7 +33,7 @@ return {
 
 	exportPresetFields = {
 		{ key = 'putInSubfolder', default = false },
-		{ key = 'path', default = 'photos' },
+		{ key = 'path', default = '/' },
 		{ key = "ftpPreset", default = nil },
 		{ key = "fullPath", default = nil },
 	},

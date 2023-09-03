@@ -22,15 +22,20 @@ return {
 	LrSdkVersion = 3.0,
 	LrSdkMinimumVersion = 1.3, -- minimum SDK version required by this plug-in
 
-	LrToolkitIdentifier = 'com.adobe.lightroom.export.ftp_upload',
+	LrToolkitIdentifier = 'org.365labs.app.pixid.autopresetuploader',
 
-	LrPluginName = LOC "$$$/FTPUpload/PluginName=Pixid FTP Upload",
+	LrPluginName = LOC "$$$/AutoPresetUploader/PluginName=Pixid Uploader Plug-in",
 	
-	LrExportServiceProvider = {
-		title = "FTP Upload",
-		file = 'FtpUploadServiceProvider.lua',
-	},
+	-- LrExportServiceProvider = {
+	-- 	title = "FTP Upload",
+	-- 	file = 'FtpUploadServiceProvider.lua',
+	-- },
 
-	VERSION = { major=12, minor=5, revision=0, build="202308091523-68a7abd6", },
+	LrExportMenuItems = {{
+		title = "Uploader console ...",
+		file = "AutoPresetUploader.lua",		
+	}},
+
+	VERSION = { major=0, minor=1, revision=0, build="20230903", },
 
 }
