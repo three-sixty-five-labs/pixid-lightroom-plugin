@@ -52,7 +52,7 @@ end
 local operatingSystem = getOS()
 
 -- Process pictures and save them as JPEG
-local function processPhotos(photos, outputFolder, size)
+local function processPhotos(photos, outputFolder, size, ftpInfo)
 	LrFunctionContext.callWithContext("export", function(exportContext)
 
 		local progressScope = LrDialogs.showModalProgressDialog({
@@ -123,30 +123,30 @@ local function processPhotos(photos, outputFolder, size)
 			stopIfCanceled = true,
 		}
 
-		ftpPreset = {}
+		local ftpInstance
 
-		--simple table value assignment
-		ftpPreset["passive"] = "none"
-		ftpPreset["password"] = "hheco7"
-		ftpPreset["path"] = "/"
-		ftpPreset["port"] = 21
-		ftpPreset["protocol"] = "ftp"
-		ftpPreset["server"] = "ftp.pixid.app"
-		ftpPreset["username"] = "chao"
-		
-		local ftpInstance = LrFtp.create( ftpPreset, true )
+		if ftpInfo['isEnabled'] then
+			ftpPreset = {}
 
-		if not ftpInstance then
-			-- This really shouldn't ever happen.
-			LrErrors.throwUserError( LOC "$$$/FtpUpload/Upload/Errors/InvalidFtpParameters=The specified FTP preset is incomplete and cannot be used." )
+			--simple table value assignment
+			ftpPreset["passive"] = "none"
+			ftpPreset["password"] = ftpInfo['ftpPassword']
+			ftpPreset["path"] = "/"
+			ftpPreset["port"] = 21
+			ftpPreset["protocol"] = "ftp"
+			ftpPreset["server"] = "ftp.pixid.app"
+			ftpPreset["username"] = ftpInfo['ftpUsername']
+
+			ftpInstance = LrFtp.create( ftpPreset, true )
+			
+			if not ftpInstance then -- This really shouldn't ever happen.
+				LrErrors.throwUserError( LOC "$$$/FtpUpload/Upload/Errors/InvalidFtpParameters=The specified FTP preset is incomplete and cannot be used." )
+			end		
 		end
 
 		for i, rendition in exportSession:renditions(renditionParams) do
 
-			-- Stop processing if the cancel button has been pressed
-			if progressScope:isCanceled() then
-				break
-			end
+			if progressScope:isCanceled() then break end -- Stop processing if the cancel button has been pressed
 
 			-- Common caption for progress bar
 			local progressCaption = rendition.photo:getFormattedMetadata("fileName") .. " (" .. i .. "/" .. numPhotos .. ")"
@@ -156,22 +156,15 @@ local function processPhotos(photos, outputFolder, size)
 
 			local success, pathOrMessage = rendition:waitForRender()
 		
-			-- Check for cancellation again after photo has been rendered.
+			if progressScope:isCanceled() then break end -- Check for cancellation again after photo has been rendered.
 			
-			if progressScope:isCanceled() then break end
-			
-			if success then
+			if success and ftpInfo['isEnabled'] then
 	
 				local filename = LrPathUtils.leafName( pathOrMessage )
-				
+			
 				local success = ftpInstance:putFile( pathOrMessage, filename )
 				
-				if not success then
-				
-					-- If we can't upload that file, log it.  For example, maybe user has exceeded disk
-					-- quota, or the file already exists and we don't have permission to overwrite, or
-					-- we don't have permission to write to that directory, etc....
-					
+				if not success then -- if file can't uploaded, keep in a table
 					table.insert( failures, filename )
 				end
 						
@@ -182,15 +175,16 @@ local function processPhotos(photos, outputFolder, size)
 						
 			end
 		end
-		outputToLog("END LOOP")
 
-		ftpInstance:disconnect()
+		if ftpInfo['isEnabled'] then
+			ftpInstance:disconnect()
+		end
 		
 	end)
 end
 
 -- Import pictures from folder where the rating is not 2 stars 
-local function importFolder(LrCatalog, folder, outputFolder, size)
+local function importFolder(LrCatalog, folder, outputFolder, size, ftpInfo)
 	local presetFolders = LrApplication.developPresetFolders()
 	local presetFolder = presetFolders[1]
 	local presets = presetFolder:getDevelopPresets()
@@ -211,7 +205,7 @@ local function importFolder(LrCatalog, folder, outputFolder, size)
 		end
 
 		if #export > 0 then
-			processPhotos(export, outputFolder, size)
+			processPhotos(export, outputFolder, size, ftpInfo)
 		end
 	end)
 end
@@ -232,6 +226,24 @@ local function mainDialog()
 			immediate = true,
 			width = 500,
 			value = ( operatingSystem == "Windows" ) and "C:\\Pictures" or getHome() .. "/Pictures" 
+		}
+
+		local ftpUsernameField = f:edit_field {
+			immediate = true,
+			width = 100,
+			value = "" 
+		}
+
+		local ftpPasswordField = f:password_field {
+			immediate = true,
+			width = 100,
+			value = "" 
+		}	
+
+		local ftpIsEnabledCheckbox =  f:checkbox {
+			title = "Enable FTP Upload",
+			value = false,
+			-- value = bind 'checkbox_state', -- bind to the key value checked_value = 'checked', -- this is the initial state unchecked_value = 'unchecked', -- when the user unchecks the box,
 		}
 
 		local staticTextValue = f:static_text {
@@ -271,11 +283,11 @@ local function mainDialog()
 			local watcherRunning = false
 
 			-- Watcher, executes function and then sleeps x seconds using PowerShell
-			local function watch(interval)
+			local function watch(interval, ftpInfo)
 				LrTasks.startAsyncTask(function()
 					while watcherRunning do
 						LrDialogs.showBezel("Processing images.")
-						importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value)
+						importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value, ftpInfo)
 						if LrTasks.canYield() then
 							LrTasks.yield()
 						end
@@ -334,9 +346,29 @@ local function mainDialog()
 					outputFolderField
 				},
 				f:row {
-					f:separator {
-						fill_horizontal = 1
-					}
+					f:separator { fill_horizontal = 1 }
+				},
+				f:row {
+					ftpIsEnabledCheckbox
+				},
+				f:row {
+					f:static_text {
+						alignment = "right",
+						width = LrView.share "label_width",
+						title = "FTP Username: "
+					},
+					ftpUsernameField
+				},
+				f:row {
+					f:static_text {
+						alignment = "right",
+						width = LrView.share "label_width",
+						title = "FTP Password: "
+					},
+					ftpPasswordField
+				},
+				f:row {
+					f:separator { fill_horizontal = 1 }
 				},
 				f:row {
 					fill_horizontal = 1,
@@ -353,27 +385,35 @@ local function mainDialog()
 						action = function()
 							if folderField.value ~= "" then
 								props.myObservedString = "Processed once"
-								importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value)
+								ftpInfo = {}
+								ftpInfo['isEnabled'] = ftpIsEnabledCheckbox.value
+								ftpInfo['ftpUsername'] = ftpUsernameField.value
+								ftpInfo['ftpPassword'] = ftpPasswordField.value
+								importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value, ftpInfo)
 							else
 								LrDialogs.message("Please select an input folder")
 							end
 						end
 					},
 					f:push_button {
-						title = "Watch interval",
+						title = "Interval process",
 
 						action = function()
 							watcherRunning = true
 							if folderField.value ~= "" then
 								props.myObservedString = "Running"
-								watch(intervalField.value)
+								ftpInfo = {}
+								ftpInfo['isEnabled'] = ftpIsEnabledCheckbox.value
+								ftpInfo['ftpUsername'] = ftpUsernameField.value
+								ftpInfo['ftpPassword'] = ftpPasswordField.value
+								watch(intervalField.value, ftpInfo)
 							else
 								LrDialogs.message("Please select an input folder")
 							end
 						end
 					},
 					f:push_button {
-						title = "Pause watcher",
+						title = "Stop interval process",
 
 						action = function()
 							watcherRunning = false
