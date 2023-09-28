@@ -8,6 +8,11 @@ local LrApplication = import 'LrApplication'
 local LrExportSession = import 'LrExportSession'
 local LrTasks = import 'LrTasks'
 
+local LrPathUtils = import 'LrPathUtils'
+local LrFtp = import 'LrFtp'
+local LrFileUtils = import 'LrFileUtils'
+local LrErrors = import 'LrErrors'
+
 local LrLogger = import 'LrLogger'
 local myLogger = LrLogger( 'exportLogger' )
 myLogger:enable( 'print' )
@@ -118,6 +123,47 @@ local function processPhotos(photos, outputFolder, size)
 			stopIfCanceled = true,
 		}
 
+		-- Lightroom API
+		-- local LrPathUtils = import 'LrPathUtils'
+		-- local LrFtp = import 'LrFtp'
+		-- local LrFileUtils = import 'LrFileUtils'
+		-- local LrErrors = import 'LrErrors'
+		-- local LrDialogs = import 'LrDialogs'
+
+		-- if not LrFtp.queryForPasswordIfNeeded( ftpPreset ) then
+		-- 	return
+		-- end
+
+		ftpPreset = {}
+
+		--simple table value assignment
+		ftpPreset["passive"] = "none"
+		ftpPreset["password"] = "hheco7"
+		ftpPreset["path"] = "/"
+		ftpPreset["port"] = 21
+		ftpPreset["protocol"] = "ftp"
+		ftpPreset["server"] = "ftp.pixid.app"
+		ftpPreset["username"] = "chao"
+		
+		outputToLog(ftpPreset)
+
+		-- if not LrFtp.queryForPasswordIfNeeded( ftpPreset ) then
+		-- 	return
+		-- end
+
+		outputToLog(ftpPreset["password"])
+
+		local ftpInstance = LrFtp.create( ftpPreset, true )
+		outputToLog("XXXXXXXXX")
+
+		if not ftpInstance then
+			-- This really shouldn't ever happen.
+			LrErrors.throwUserError( LOC "$$$/FtpUpload/Upload/Errors/InvalidFtpParameters=The specified FTP preset is incomplete and cannot be used." )
+		end
+
+		outputToLog(ftpInstance.connected)
+
+		outputToLog("START RENDITION LOOP")
 		for i, rendition in exportSession:renditions(renditionParams) do
 
 			-- Stop processing if the cancel button has been pressed
@@ -131,8 +177,37 @@ local function processPhotos(photos, outputFolder, size)
 			progressScope:setPortionComplete(i - 1, numPhotos)
 			progressScope:setCaption("Processing " .. progressCaption)
 
-			-- rendition:waitForRender() -- This is the line to process the image
+			local success, pathOrMessage = rendition:waitForRender()
+		
+			-- Check for cancellation again after photo has been rendered.
+			
+			if progressScope:isCanceled() then break end
+			
+			if success then
+	
+				local filename = LrPathUtils.leafName( pathOrMessage )
+				
+				local success = ftpInstance:putFile( pathOrMessage, filename )
+				
+				if not success then
+				
+					-- If we can't upload that file, log it.  For example, maybe user has exceeded disk
+					-- quota, or the file already exists and we don't have permission to overwrite, or
+					-- we don't have permission to write to that directory, etc....
+					
+					table.insert( failures, filename )
+				end
+						
+				-- When done with photo, delete temp file. There is a cleanup step that happens later,
+				-- but this will help manage space in the event of a large upload.
+				
+				-- LrFileUtils.delete( pathOrMessage )
+						
+			end
 		end
+		outputToLog("END LOOP")
+
+		ftpInstance:disconnect()
 		
 	end)
 end
