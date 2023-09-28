@@ -32,7 +32,7 @@ return {
 	-- },
 
 	LrExportMenuItems = {{
-		title = "Uploader console ...",
+		title = "Export & Uploader console ...",
 		file = "Uploader.lua",		
 	}},
 

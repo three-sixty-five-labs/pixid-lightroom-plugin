@@ -123,17 +123,6 @@ local function processPhotos(photos, outputFolder, size)
 			stopIfCanceled = true,
 		}
 
-		-- Lightroom API
-		-- local LrPathUtils = import 'LrPathUtils'
-		-- local LrFtp = import 'LrFtp'
-		-- local LrFileUtils = import 'LrFileUtils'
-		-- local LrErrors = import 'LrErrors'
-		-- local LrDialogs = import 'LrDialogs'
-
-		-- if not LrFtp.queryForPasswordIfNeeded( ftpPreset ) then
-		-- 	return
-		-- end
-
 		ftpPreset = {}
 
 		--simple table value assignment
@@ -145,25 +134,13 @@ local function processPhotos(photos, outputFolder, size)
 		ftpPreset["server"] = "ftp.pixid.app"
 		ftpPreset["username"] = "chao"
 		
-		outputToLog(ftpPreset)
-
-		-- if not LrFtp.queryForPasswordIfNeeded( ftpPreset ) then
-		-- 	return
-		-- end
-
-		outputToLog(ftpPreset["password"])
-
 		local ftpInstance = LrFtp.create( ftpPreset, true )
-		outputToLog("XXXXXXXXX")
 
 		if not ftpInstance then
 			-- This really shouldn't ever happen.
 			LrErrors.throwUserError( LOC "$$$/FtpUpload/Upload/Errors/InvalidFtpParameters=The specified FTP preset is incomplete and cannot be used." )
 		end
 
-		outputToLog(ftpInstance.connected)
-
-		outputToLog("START RENDITION LOOP")
 		for i, rendition in exportSession:renditions(renditionParams) do
 
 			-- Stop processing if the cancel button has been pressed
@@ -222,12 +199,12 @@ local function importFolder(LrCatalog, folder, outputFolder, size)
 		local export = {}
 
 		for _, photo in pairs(photos) do
-			if (photo:getRawMetadata("rating") ~= 2 ) then
+			if (photo:getRawMetadata("rating") ~= 1 ) then
 				LrCatalog:withWriteAccessDo("Apply Preset", function(context)
 					for _, preset in pairs(presets) do
 						photo:applyDevelopPreset(preset)
 					end
-					photo:setRawMetadata("rating", 2)
+					photo:setRawMetadata("rating", 1)
 					table.insert(export, photo)
 				end)
 			end
@@ -407,7 +384,7 @@ local function mainDialog()
 			}
 
 			LrDialogs.presentModalDialog {
-				title = "Auto Export resize2000px Watcher",
+				title = "pixid : Auto Import / Export / FTP",
 				contents = c,
 			}
 
