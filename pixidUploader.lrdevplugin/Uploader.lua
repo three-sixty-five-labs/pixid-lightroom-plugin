@@ -62,7 +62,7 @@ local function processPhotos(photos, outputFolder, size, ftpInfo)
 			functionContext = exportContext
 		})
 
-		if size == "2000px" then
+		if size == "original" then
 			exportSession = LrExportSession({
 				photosToExport = photos,
 				exportSettings = {
@@ -78,11 +78,11 @@ local function processPhotos(photos, outputFolder, size, ftpInfo)
 					LR_outputSharpeningOn = false,
 					LR_reimportExportedPhoto = false,
 					LR_renamingTokensOn = true,
-					LR_size_doConstrain = true,
+					-- LR_size_doConstrain = true,
 					LR_size_doNotEnlarge = true,
-					LR_size_maxHeight = 2000,
-					LR_size_maxWidth = 2000,
-					LR_size_resolution = 72,
+					-- LR_size_maxHeight = 2000,
+					-- LR_size_maxWidth = 2000,
+					-- LR_size_resolution = 72,
 					LR_size_units = "pixels",
 					LR_tokens = "{{image_name}}",
 					LR_useWatermark = false,
@@ -104,11 +104,11 @@ local function processPhotos(photos, outputFolder, size, ftpInfo)
 					LR_outputSharpeningOn = false,
 					LR_reimportExportedPhoto = false,
 					LR_renamingTokensOn = true,
-					-- LR_size_doConstrain = true,
+					LR_size_doConstrain = true,
 					LR_size_doNotEnlarge = true,
-					-- LR_size_maxHeight = 2000,
-					-- LR_size_maxWidth = 2000,
-					-- LR_size_resolution = 72,
+					LR_size_maxHeight = size,
+					LR_size_maxWidth = size,
+					LR_size_resolution = 300,
 					LR_size_units = "pixels",
 					LR_tokens = "{{image_name}}",
 					LR_useWatermark = false,
@@ -255,7 +255,6 @@ local function mainDialog()
 		end
 
 		LrTasks.startAsyncTask(function()
-
 			local LrCatalog = LrApplication.activeCatalog()
 			local catalogFolders = LrCatalog:getFolders()
 			local folderCombo = {}
@@ -270,8 +269,8 @@ local function mainDialog()
 			}
 
 			local sizeField = f:combo_box {
-				items = {"2000px", "original"},
-				value = "2000px"
+				items = {"1500", "2000", "4000", "original"},
+				value = "2000"
 			}
 
 			local intervalField = f:combo_box {
@@ -325,7 +324,7 @@ local function mainDialog()
 					f:static_text {
 						alignment = "right",
 						width = LrView.share "label_width",
-						title = "Size: "
+						title = "Size(px): "
 					},
 					sizeField
 				},
