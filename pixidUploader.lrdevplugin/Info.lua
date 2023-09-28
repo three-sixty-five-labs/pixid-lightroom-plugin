@@ -33,7 +33,7 @@ return {
 
 	LrExportMenuItems = {{
 		title = "Uploader console ...",
-		file = "AutoPresetUploader.lua",		
+		file = "Uploader.lua",		
 	}},
 
 	VERSION = { major=0, minor=1, revision=0, build="20230903", },
