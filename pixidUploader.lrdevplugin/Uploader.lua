@@ -51,6 +51,9 @@ end
 
 local operatingSystem = getOS()
 
+local failures = {}
+local ftpFailures = {}
+
 -- Process pictures and save them as JPEG
 local function processPhotos(photos, outputFolder, size, ftpInfo)
 	LrFunctionContext.callWithContext("export", function(exportContext)
@@ -162,18 +165,22 @@ local function processPhotos(photos, outputFolder, size, ftpInfo)
 	
 				local filename = LrPathUtils.leafName( pathOrMessage )
 			
-				local success = ftpInstance:putFile( pathOrMessage, filename )
+				local ftpSuccess = ftpInstance:putFile( pathOrMessage, filename )
 				
-				if not success then -- if file can't uploaded, keep in a table
-					table.insert( failures, filename )
+				if not ftpSuccess then -- if file can't uploaded, keep in a table
+					table.insert( ftpFailures, filename )
 				end
 						
 				-- When done with photo, delete temp file. There is a cleanup step that happens later,
 				-- but this will help manage space in the event of a large upload.
 				
 				-- LrFileUtils.delete( pathOrMessage )
-						
 			end
+
+			if not success then -- if file can't uploaded, keep in a table
+				table.insert( failures, filename )
+			end
+
 		end
 
 		if ftpInfo['isEnabled'] then
