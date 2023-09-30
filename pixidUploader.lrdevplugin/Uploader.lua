@@ -390,7 +390,7 @@ local function mainDialog()
 					f:static_text {
 						alignment = "right",
 						width = LrView.share "label_width",
-						title = "Watcher running: "
+						title = "Process Status: "
 					},
 					staticTextValue,
 				},
@@ -439,7 +439,7 @@ local function mainDialog()
 			}
 
 			LrDialogs.presentModalDialog {
-				title = "pixid : Auto Import / Export / FTP",
+				title = "pixid : Auto Import / Export / Uploader",
 				contents = c,
 			}
 
