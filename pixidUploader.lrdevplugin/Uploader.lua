@@ -55,7 +55,7 @@ local failures = {}
 local ftpFailures = {}
 
 -- Process pictures and save them as JPEG
-local function processPhotos(photos, outputFolder, size, ftpInfo)
+local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo)
 	LrFunctionContext.callWithContext("export", function(exportContext)
 
 		local progressScope = LrDialogs.showModalProgressDialog({
@@ -162,18 +162,26 @@ local function processPhotos(photos, outputFolder, size, ftpInfo)
 			if progressScope:isCanceled() then break end -- Check for cancellation again after photo has been rendered.
 			
 			if success and ftpInfo['isEnabled'] then
-	
-				local filename = LrPathUtils.leafName( pathOrMessage )
-			
-				local ftpSuccess = ftpInstance:putFile( pathOrMessage, filename )
+				LrCatalog:withWriteAccessDo("Set star", function(context)
+					rendition.photo:setRawMetadata("rating", 1)
+				end)
+
+				if rendition.photo:getRawMetadata("rating") ~= 2 then
+					local filename = LrPathUtils.leafName( pathOrMessage )
 				
-				if not ftpSuccess then -- if file can't uploaded, keep in a table
-					table.insert( ftpFailures, filename )
+					local ftpSuccess = ftpInstance:putFile( pathOrMessage, filename )
+					
+					if not ftpSuccess then -- if file can't uploaded, keep in a table
+						table.insert( ftpFailures, filename )
+					else
+						LrCatalog:withWriteAccessDo("Set star", function(context)
+							rendition.photo:setRawMetadata("rating", 2)
+						end)
+					end
 				end
 						
 				-- When done with photo, delete temp file. There is a cleanup step that happens later,
 				-- but this will help manage space in the event of a large upload.
-				
 				-- LrFileUtils.delete( pathOrMessage )
 			end
 
@@ -200,19 +208,20 @@ local function importFolder(LrCatalog, folder, outputFolder, size, ftpInfo)
 		local export = {}
 
 		for _, photo in pairs(photos) do
-			if (photo:getRawMetadata("rating") ~= 1 ) then
+			if photo:getRawMetadata("rating") ~= 2 then
 				LrCatalog:withWriteAccessDo("Apply Preset", function(context)
+					
 					for _, preset in pairs(presets) do
 						photo:applyDevelopPreset(preset)
 					end
-					photo:setRawMetadata("rating", 1)
+					
 					table.insert(export, photo)
 				end)
 			end
 		end
 
 		if #export > 0 then
-			processPhotos(export, outputFolder, size, ftpInfo)
+			processPhotos(LrCatalog, export, outputFolder, size, ftpInfo)
 		end
 	end)
 end
