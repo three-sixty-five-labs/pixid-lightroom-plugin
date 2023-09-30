@@ -26,11 +26,6 @@ return {
 
 	LrPluginName = LOC "$$$/AutoPresetUploader/PluginName=Pixid Uploader Plug-in",
 	
-	-- LrExportServiceProvider = {
-	-- 	title = "FTP Upload",
-	-- 	file = 'FtpUploadServiceProvider.lua',
-	-- },
-
 	LrExportMenuItems = {{
 		title = "Export & Uploader console ...",
 		file = "Uploader.lua",		
