@@ -17,6 +17,8 @@ local LrLogger = import 'LrLogger'
 local myLogger = LrLogger( 'exportLogger' )
 myLogger:enable( 'print' )
 
+require "config"
+
 function outputToLog( message )
 	myLogger:trace( message )
 end
@@ -244,10 +246,21 @@ local function mainDialog()
 			value = ( operatingSystem == "Windows" ) and "C:\\Pictures" or getHome() .. "/Pictures" 
 		}
 
+		local sizeField = f:combo_box {
+			items = {"1500", "2000", "4000", "original"},
+			value = "2000"
+		}
+
+		local intervalField = f:combo_box {
+			items = {"3", "15", "30", "60"},
+			value = "3",
+			width_in_digits = 3
+		}
+
 		local ftpUsernameField = f:edit_field {
 			immediate = true,
 			width = 100,
-			value = "" 
+			value = ""
 		}
 
 		local ftpPasswordField = f:password_field {
@@ -259,7 +272,6 @@ local function mainDialog()
 		local ftpIsEnabledCheckbox =  f:checkbox {
 			title = "Enable FTP Upload",
 			value = false,
-			-- value = bind 'checkbox_state', -- bind to the key value checked_value = 'checked', -- this is the initial state unchecked_value = 'unchecked', -- when the user unchecks the box,
 		}
 
 		local staticTextValue = f:static_text {
@@ -270,6 +282,14 @@ local function mainDialog()
 			staticTextValue.title = props.myObservedString
 		end
 
+		-- Setting default value for input
+		if config['outputFolder'] ~= nil and config['outputFolder'] ~= '' then outputFolderField.value = config['outputFolder'] end
+		if config['size'] ~= nil         and config['size'] ~= ''         then sizeField.value = config['size'] end
+		if config['interval'] ~= nil     and config['interval'] ~= ''     then intervalField.value = config['interval'] end
+		if config['ftpUsername'] ~= nil  and config['ftpUsername'] ~= ''  then ftpUsernameField.value = config['ftpUsername'] end
+		if config['ftpPassword'] ~= nil  and config['ftpPassword'] ~= ''  then ftpPasswordField.value = config['ftpPassword'] end
+		if config['ftpIsEnabled'] ~= nil and config['ftpIsEnabled'] ~= '' then ftpIsEnabledCheckbox.value = config['ftpIsEnabled'] end
+		
 		LrTasks.startAsyncTask(function()
 			local LrCatalog = LrApplication.activeCatalog()
 			local catalogFolders = LrCatalog:getFolders()
@@ -284,16 +304,7 @@ local function mainDialog()
 				items = folderCombo
 			}
 
-			local sizeField = f:combo_box {
-				items = {"1500", "2000", "4000", "original"},
-				value = "2000"
-			}
-
-			local intervalField = f:combo_box {
-				items = {"3", "15", "30", "60"},
-				value = "3",
-				width_in_digits = 3
-			}
+			if config['lightroomFolder'] ~= nil and config['lightroomFolder'] ~= '' then folderField.value = config['lightroomFolder'] end
 
 			local watcherRunning = false
 
