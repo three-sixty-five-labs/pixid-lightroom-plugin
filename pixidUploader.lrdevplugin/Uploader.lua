@@ -18,40 +18,13 @@ local myLogger = LrLogger( 'exportLogger' )
 myLogger:enable( 'print' )
 
 require "config"
+require "Utils"
 
 function outputToLog( message )
 	myLogger:trace( message )
 end
 
-local function getHome()
-	local fh,err = assert(io.popen("echo $HOME 2>/dev/null","r"))
-	if fh then
-		home = fh:read()
-	end
-
-	return home or ""
-end 
-
-function getOS()
-	-- ask LuaJIT first
-	if jit then
-		return jit.os
-	end
-
-	-- Unix, Linux variants
-	local fh,err = assert(io.popen("uname -o 2>/dev/null","r"))
-	if fh then
-		osname = fh:read()
-	end
-
-	if osname == "Darwin" then 
-		return "MacOS"
-	end
-	
-	return osname or "Windows"
-end
-
-local operatingSystem = getOS()
+local operatingSystem = Utils.getOS()
 
 local failures = {}
 local ftpFailures = {}
@@ -235,15 +208,14 @@ local function mainDialog()
 		local props = LrBinding.makePropertyTable(context)
 		local f = LrView.osFactory()
 
-		local operatingSystem = getOS()
 		local operatingSystemValue = f:static_text {
-			title = operatingSystem
+			title = Utils.getOS()
 		}
 
 		local outputFolderField = f:edit_field {
 			immediate = true,
 			width = 500,
-			value = ( operatingSystem == "Windows" ) and "C:\\Pictures" or getHome() .. "/Pictures" 
+			value = ( operatingSystem == "Windows" ) and "C:\\Pictures" or Utils.getHome() .. "/Pictures" 
 		}
 
 		local sizeField = f:combo_box {
