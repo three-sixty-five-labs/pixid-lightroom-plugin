@@ -137,23 +137,23 @@ local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo)
 			if progressScope:isCanceled() then break end -- Check for cancellation again after photo has been rendered.
 			
 			if success and ftpInfo['isEnabled'] then
-				LrCatalog:withWriteAccessDo("Set star", function(context)
-					rendition.photo:setRawMetadata("rating", 1)
-				end)
+				-- LrCatalog:withWriteAccessDo("Set star", function(context)
+				-- 	rendition.photo:setRawMetadata("rating", 1)
+				-- end)
 
-				if rendition.photo:getRawMetadata("rating") ~= 2 then
+				-- if rendition.photo:getRawMetadata("rating") ~= 2 then
 					local filename = LrPathUtils.leafName( pathOrMessage )
 				
 					local ftpSuccess = ftpInstance:putFile( pathOrMessage, filename )
 					
 					if not ftpSuccess then -- if file can't uploaded, keep in a table
 						table.insert( ftpFailures, filename )
-					else
-						LrCatalog:withWriteAccessDo("Set star", function(context)
-							rendition.photo:setRawMetadata("rating", 2)
-						end)
+					-- else
+					-- 	LrCatalog:withWriteAccessDo("Set star", function(context)
+					-- 		rendition.photo:setRawMetadata("rating", 2)
+					-- 	end)
 					end
-				end
+				-- end
 						
 				-- When done with photo, delete temp file. There is a cleanup step that happens later,
 				-- but this will help manage space in the event of a large upload.
@@ -185,11 +185,10 @@ local function importFolder(LrCatalog, folder, outputFolder, size, ftpInfo)
 		for _, photo in pairs(photos) do
 			if photo:getRawMetadata("rating") ~= 2 then
 				LrCatalog:withWriteAccessDo("Apply Preset", function(context)
-					
 					for _, preset in pairs(presets) do
 						photo:applyDevelopPreset(preset)
 					end
-					
+					photo:setRawMetadata("rating", 2)	
 					table.insert(export, photo)
 				end)
 			end
@@ -224,8 +223,8 @@ local function mainDialog()
 		}
 
 		local intervalField = f:combo_box {
-			items = {"3", "15", "30", "60"},
-			value = "3",
+			items = {"3", "15", "30", "60", "90", "120", "180"},
+			value = "30",
 			width_in_digits = 3
 		}
 
