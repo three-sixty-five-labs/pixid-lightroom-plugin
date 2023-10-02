@@ -40,59 +40,36 @@ local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo)
 			functionContext = exportContext
 		})
 
-		if size == "original" then
-			exportSession = LrExportSession({
-				photosToExport = photos,
-				exportSettings = {
-					LR_collisionHandling = "rename",
-					LR_export_bitDepth = "8",
-					LR_export_colorSpace = "sRGB",
-					LR_export_destinationPathPrefix = outputFolder,
-					LR_export_destinationType = "specificFolder",
-					LR_export_useSubfolder = false,
-					LR_format = "JPEG",
-					LR_jpeg_quality = 1,
-					LR_minimizeEmbeddedMetadata = true,
-					LR_outputSharpeningOn = false,
-					LR_reimportExportedPhoto = false,
-					LR_renamingTokensOn = true,
-					-- LR_size_doConstrain = true,
-					LR_size_doNotEnlarge = true,
-					-- LR_size_maxHeight = 2000,
-					-- LR_size_maxWidth = 2000,
-					-- LR_size_resolution = 72,
-					LR_size_units = "pixels",
-					LR_tokens = "{{image_name}}",
-					LR_useWatermark = false,
-				}
-			})
-		else
-			exportSession = LrExportSession({
-				photosToExport = photos,
-				exportSettings = {
-					LR_collisionHandling = "rename",
-					LR_export_bitDepth = "8",
-					LR_export_colorSpace = "sRGB",
-					LR_export_destinationPathPrefix = outputFolder,
-					LR_export_destinationType = "specificFolder",
-					LR_export_useSubfolder = false,
-					LR_format = "JPEG",
-					LR_jpeg_quality = 1,
-					LR_minimizeEmbeddedMetadata = true,
-					LR_outputSharpeningOn = false,
-					LR_reimportExportedPhoto = false,
-					LR_renamingTokensOn = true,
-					LR_size_doConstrain = true,
-					LR_size_doNotEnlarge = true,
-					LR_size_maxHeight = tonumber(size),
-					LR_size_maxWidth = tonumber(size),
-					LR_size_resolution = 300,
-					LR_size_units = "pixels",
-					LR_tokens = "{{image_name}}",
-					LR_useWatermark = false,
-				}
-			})
+		local exportSettings = {
+			LR_collisionHandling = "rename",
+			LR_export_bitDepth = "8",
+			LR_export_colorSpace = "sRGB",
+			LR_export_destinationPathPrefix = outputFolder,
+			LR_export_destinationType = "specificFolder",
+			LR_export_useSubfolder = false,
+			LR_format = "JPEG",
+			LR_jpeg_quality = 1,
+			LR_minimizeEmbeddedMetadata = true,
+			LR_outputSharpeningOn = false,
+			LR_reimportExportedPhoto = false,
+			LR_renamingTokensOn = true,
+			LR_size_doNotEnlarge = true,
+			LR_size_units = "pixels",
+			LR_tokens = "{{image_name}}",
+			LR_useWatermark = false,
+		}
+
+		if size ~= "original" then
+			exportSettings['LR_size_doConstrain'] = true
+			exportSettings['LR_size_maxHeight'] = tonumber(size)
+			exportSettings['LR_size_maxWidth'] = tonumber(size)
+			exportSettings['LR_size_resolution'] = 300
 		end
+
+		exportSession = LrExportSession({
+			photosToExport = photos,
+			exportSettings = exportSettings, 
+		})
 
 		local numPhotos = exportSession:countRenditions()
 		local renditionParams = {
@@ -137,23 +114,13 @@ local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo)
 			if progressScope:isCanceled() then break end -- Check for cancellation again after photo has been rendered.
 			
 			if success and ftpInfo['isEnabled'] then
-				-- LrCatalog:withWriteAccessDo("Set star", function(context)
-				-- 	rendition.photo:setRawMetadata("rating", 1)
-				-- end)
 
-				-- if rendition.photo:getRawMetadata("rating") ~= 2 then
-					local filename = LrPathUtils.leafName( pathOrMessage )
+				local filename = LrPathUtils.leafName( pathOrMessage )		
+				local ftpSuccess = ftpInstance:putFile( pathOrMessage, filename )
 				
-					local ftpSuccess = ftpInstance:putFile( pathOrMessage, filename )
-					
-					if not ftpSuccess then -- if file can't uploaded, keep in a table
-						table.insert( ftpFailures, filename )
-					-- else
-					-- 	LrCatalog:withWriteAccessDo("Set star", function(context)
-					-- 		rendition.photo:setRawMetadata("rating", 2)
-					-- 	end)
-					end
-				-- end
+				if not ftpSuccess then -- if file can't uploaded, keep in a table
+					table.insert( ftpFailures, filename )
+				end
 						
 				-- When done with photo, delete temp file. There is a cleanup step that happens later,
 				-- but this will help manage space in the event of a large upload.
