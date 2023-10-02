@@ -31,8 +31,11 @@ local ftpFailures = {}
 
 -- Process pictures and save them as JPEG
 local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo)
+	local presetFolders = LrApplication.developPresetFolders()
+	local presetFolder = presetFolders[1]
+	local presets = presetFolder:getDevelopPresets()
+	
 	LrFunctionContext.callWithContext("export", function(exportContext)
-
 		local progressScope = LrDialogs.showModalProgressDialog({
 			title = "Auto applying presets",
 			caption = "",
@@ -81,9 +84,8 @@ local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo)
 		local ftpInstance
 
 		if ftpInfo['isEnabled'] then
-			ftpPreset = {}
-
 			--simple table value assignment
+			ftpPreset = {}
 			ftpPreset["passive"] = "none"
 			ftpPreset["password"] = ftpInfo['ftpPassword']
 			ftpPreset["path"] = "/"
@@ -108,6 +110,12 @@ local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo)
 
 			progressScope:setPortionComplete(i - 1, numPhotos)
 			progressScope:setCaption("Processing " .. progressCaption)
+
+			LrCatalog:withWriteAccessDo("Apply Preset", function(context)
+				for _, preset in pairs(presets) do
+					rendition.photo:applyDevelopPreset(preset)
+				end
+			end)
 
 			local success, pathOrMessage = rendition:waitForRender()
 		
@@ -142,9 +150,6 @@ end
 
 -- Import pictures from folder where the rating is not 2 stars 
 local function importFolder(LrCatalog, folder, outputFolder, size, ftpInfo)
-	local presetFolders = LrApplication.developPresetFolders()
-	local presetFolder = presetFolders[1]
-	local presets = presetFolder:getDevelopPresets()
 	LrTasks.startAsyncTask(function()
 		local photos = folder:getPhotos()
 		local export = {}
@@ -152,9 +157,6 @@ local function importFolder(LrCatalog, folder, outputFolder, size, ftpInfo)
 		for _, photo in pairs(photos) do
 			if photo:getRawMetadata("rating") ~= 2 then
 				LrCatalog:withWriteAccessDo("Apply Preset", function(context)
-					for _, preset in pairs(presets) do
-						photo:applyDevelopPreset(preset)
-					end
 					photo:setRawMetadata("rating", 2)	
 					table.insert(export, photo)
 				end)
