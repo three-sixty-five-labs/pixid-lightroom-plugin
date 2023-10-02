@@ -158,7 +158,7 @@ local function importFolder(LrCatalog, folder, outputFolder, size, ftpInfo)
 
 		for _, photo in pairs(photos) do
 			if photo:getRawMetadata("rating") ~= 2 then
-				LrCatalog:withWriteAccessDo("Apply Preset", function(context)
+				LrCatalog:withWriteAccessDo("Setting rating", function(context)
 					photo:setRawMetadata("rating", 2)	
 					table.insert(export, photo)
 				end)
