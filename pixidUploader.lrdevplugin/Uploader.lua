@@ -87,12 +87,12 @@ local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo)
 			--simple table value assignment
 			ftpPreset = {}
 			ftpPreset["passive"] = "none"
-			ftpPreset["password"] = ftpInfo['ftpPassword']
 			ftpPreset["path"] = "/"
 			ftpPreset["port"] = 21
 			ftpPreset["protocol"] = "ftp"
 			ftpPreset["server"] = "ftp.pixid.app"
 			ftpPreset["username"] = ftpInfo['ftpUsername']
+			ftpPreset["password"] = ftpInfo['ftpPassword']
 
 			ftpInstance = LrFtp.create( ftpPreset, true )
 			
@@ -126,7 +126,7 @@ local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo)
 				local filename = LrPathUtils.leafName( pathOrMessage )		
 				local ftpSuccess = ftpInstance:putFile( pathOrMessage, filename )
 				
-				if not ftpSuccess then -- if file can't uploaded, keep in a table
+				if not ftpSuccess then -- if file can't be exported, keep in a table
 					table.insert( ftpFailures, filename )
 				end
 						
@@ -135,7 +135,9 @@ local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo)
 				-- LrFileUtils.delete( pathOrMessage )
 			end
 
-			if not success then -- if file can't uploaded, keep in a table
+			if progressScope:isCanceled() then break end -- Check for cancellation again after photo has been rendered.
+
+			if not success then -- if file can't be FTPed, keep in a table
 				table.insert( failures, filename )
 			end
 
