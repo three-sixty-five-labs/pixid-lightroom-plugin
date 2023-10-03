@@ -111,11 +111,18 @@ local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo)
 			progressScope:setPortionComplete(i - 1, numPhotos)
 			progressScope:setCaption("Processing " .. progressCaption)
 
-			LrCatalog:withWriteAccessDo("Apply Preset", function(context)
+			local timeoutParams = {
+				timeout = 5,
+				asynchronous = true
+			}
+
+			local applyPresetStatus = LrCatalog:withWriteAccessDo("Apply Preset", function(context)
 				for _, preset in pairs(presets) do
 					rendition.photo:applyDevelopPreset(preset)
 				end
-			end)
+			end, timeoutParams)
+
+			outputToLog("Apply Preset Status = " .. applyPresetStatus)
 
 			local success, pathOrMessage = rendition:waitForRender()
 		
@@ -158,10 +165,18 @@ local function importFolder(LrCatalog, folder, outputFolder, size, ftpInfo)
 
 		for _, photo in pairs(photos) do
 			if photo:getRawMetadata("rating") ~= 2 then
-				LrCatalog:withWriteAccessDo("Setting rating", function(context)
+
+				local timeoutParams = {
+					timeout = 5,
+					asynchronous = true
+				}
+	
+				local applyPresetStatus = LrCatalog:withWriteAccessDo("Setting rating", function(context)
 					photo:setRawMetadata("rating", 2)	
 					table.insert(export, photo)
-				end)
+				end, timeoutParams)
+
+				outputToLog("Apply Preset Status = " .. applyPresetStatus)
 			end
 		end
 
@@ -194,7 +209,7 @@ local function mainDialog()
 		}
 
 		local intervalField = f:combo_box {
-			items = {"3", "15", "30", "60", "90", "120", "180"},
+			items = {"5", "15", "30", "60", "90", "120", "180"},
 			value = "30",
 			width_in_digits = 3
 		}
