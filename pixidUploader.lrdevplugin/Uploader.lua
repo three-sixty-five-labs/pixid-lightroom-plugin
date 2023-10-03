@@ -116,13 +116,11 @@ local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo)
 				asynchronous = true
 			}
 
-			local applyPresetStatus = LrCatalog:withWriteAccessDo("Apply Preset", function(context)
+			LrCatalog:withWriteAccessDo("Apply Preset", function(context)
 				for _, preset in pairs(presets) do
 					rendition.photo:applyDevelopPreset(preset)
 				end
 			end, timeoutParams)
-
-			outputToLog("Apply Preset Status = " .. applyPresetStatus)
 
 			local success, pathOrMessage = rendition:waitForRender()
 		
@@ -171,12 +169,10 @@ local function importFolder(LrCatalog, folder, outputFolder, size, ftpInfo)
 					asynchronous = true
 				}
 	
-				local applyPresetStatus = LrCatalog:withWriteAccessDo("Setting rating", function(context)
+				LrCatalog:withWriteAccessDo("Setting rating", function(context)
 					photo:setRawMetadata("rating", 2)	
 					table.insert(export, photo)
 				end, timeoutParams)
-
-				outputToLog("Apply Preset Status = " .. applyPresetStatus)
 			end
 		end
 
