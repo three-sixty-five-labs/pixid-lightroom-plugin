@@ -31,10 +31,6 @@ local ftpFailures = {}
 
 -- Process pictures and save them as JPEG
 local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo)
-	local presetFolders = LrApplication.developPresetFolders()
-	local presetFolder = presetFolders[1]
-	local presets = presetFolder:getDevelopPresets()
-	
 	LrFunctionContext.callWithContext("export", function(exportContext)
 		local progressScope = LrDialogs.showModalProgressDialog({
 			title = "Auto applying presets",
@@ -110,17 +106,6 @@ local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo)
 
 			progressScope:setPortionComplete(i - 1, numPhotos)
 			progressScope:setCaption("Processing " .. progressCaption)
-
-			local timeoutParams = {
-				timeout = 5,
-				asynchronous = true
-			}
-
-			LrCatalog:withWriteAccessDo("Apply Preset", function(context)
-				for _, preset in pairs(presets) do
-					rendition.photo:applyDevelopPreset(preset)
-				end
-			end, timeoutParams)
 
 			local success, pathOrMessage = rendition:waitForRender()
 		
