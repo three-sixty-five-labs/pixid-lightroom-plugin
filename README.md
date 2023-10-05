@@ -19,7 +19,6 @@ Photography Workflow Automation; with your camera tethered to Lightroom, your ph
    - Enable FTP and specific username and password ( In order to enable pixid FTP upload capabilities, please contact pixid vie [Facebook page messenger](https://www.facebook.com/pixidapp) )
 3. Now you have two options (A) apply the process just once by pressing `Process once` or (B) start the `Interval process` which run the script every configured interval.
 4. This will process all pictures by:
-   - Applying the presets in the selected Lightroom folder
    - Rating the processed picture with 2 stars to keep track which pictures do not need to be processed again
    - Exporting full quality JPEG to the specified Output folder
 5. Press `Stop interval process` when you want to stop the watcher. If you want to run the script in the background press OK or Cancel. *Note: that it will keep on running as long as Lightroom is open (a more neat solution is yet to be found).*
