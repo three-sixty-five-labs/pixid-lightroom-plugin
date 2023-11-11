@@ -141,7 +141,10 @@ local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo)
 end
 
 -- Import pictures from folder where the rating is not 2 stars 
-local function importFolder(LrCatalog, folder, outputFolder, size, ftpInfo)
+local function importFolder(LrCatalog, folder, outputFolder, size, ftpInfo, extra)
+	local presetFolders = LrApplication.developPresetFolders()
+	local presetFolder = presetFolders[1]
+	local presets = presetFolder:getDevelopPresets()
 	LrTasks.startAsyncTask(function()
 		local photos = folder:getPhotos()
 		local export = {}
@@ -154,7 +157,13 @@ local function importFolder(LrCatalog, folder, outputFolder, size, ftpInfo)
 					asynchronous = true
 				}
 	
-				LrCatalog:withWriteAccessDo("Setting rating", function(context)
+				LrCatalog:withWriteAccessDo("processing", function(context)
+					if extra['presetsInFavoriteIsApplied'] then
+						for _, preset in pairs(presets) do
+							photo:applyDevelopPreset(preset)
+						end
+					end
+
 					photo:setRawMetadata("rating", 2)	
 					table.insert(export, photo)
 				end, timeoutParams)
@@ -212,6 +221,11 @@ local function mainDialog()
 			value = false,
 		}
 
+		local presetsInFavoriteIsAppliedCheckbox =  f:checkbox {
+			title = "Apply all Presets in Favorite",
+			value = false,
+		}
+
 		local staticTextValue = f:static_text {
 			title = "Not started",
 		}
@@ -227,6 +241,7 @@ local function mainDialog()
 		if config['ftpUsername'] ~= nil  and config['ftpUsername'] ~= ''  then ftpUsernameField.value = config['ftpUsername'] end
 		if config['ftpPassword'] ~= nil  and config['ftpPassword'] ~= ''  then ftpPasswordField.value = config['ftpPassword'] end
 		if config['ftpIsEnabled'] ~= nil and config['ftpIsEnabled'] ~= '' then ftpIsEnabledCheckbox.value = config['ftpIsEnabled'] end
+		if config['resetsInFavoriteIsApplied'] ~= nil and config['resetsInFavoriteIsApplied'] ~= '' then presetsInFavoriteIsAppliedCheckbox.value = config['resetsInFavoriteIsApplied'] end
 		
 		LrTasks.startAsyncTask(function()
 			local LrCatalog = LrApplication.activeCatalog()
@@ -247,11 +262,11 @@ local function mainDialog()
 			local watcherRunning = false
 
 			-- Watcher, executes function and then sleeps x seconds using PowerShell
-			local function watch(interval, ftpInfo)
+			local function watch(interval, ftpInfo, extra)
 				LrTasks.startAsyncTask(function()
 					while watcherRunning do
 						LrDialogs.showBezel("Processing images.")
-						importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value, ftpInfo)
+						importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value, ftpInfo, extra)
 						if LrTasks.canYield() then
 							LrTasks.yield()
 						end
@@ -310,6 +325,14 @@ local function mainDialog()
 					outputFolderField
 				},
 				f:row {
+					f:static_text {
+						alignment = "right",
+						width = LrView.share "label_width",
+						title = ""
+					},
+					presetsInFavoriteIsAppliedCheckbox
+				},
+				f:row {
 					f:separator { fill_horizontal = 1 }
 				},
 				f:row {
@@ -353,7 +376,9 @@ local function mainDialog()
 								ftpInfo['isEnabled'] = ftpIsEnabledCheckbox.value
 								ftpInfo['ftpUsername'] = ftpUsernameField.value
 								ftpInfo['ftpPassword'] = ftpPasswordField.value
-								importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value, ftpInfo)
+								extra = {}
+								extra['presetsInFavoriteIsApplied'] = presetsInFavoriteIsAppliedCheckbox.value 
+								importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value, ftpInfo, extra)
 							else
 								LrDialogs.message("Please select an input folder")
 							end
@@ -370,7 +395,9 @@ local function mainDialog()
 								ftpInfo['isEnabled'] = ftpIsEnabledCheckbox.value
 								ftpInfo['ftpUsername'] = ftpUsernameField.value
 								ftpInfo['ftpPassword'] = ftpPasswordField.value
-								watch(intervalField.value, ftpInfo)
+								extra = {}
+								extra['presetsInFavoriteIsApplied'] = presetsInFavoriteIsAppliedCheckbox.value 
+								watch(intervalField.value, ftpInfo, extra)
 							else
 								LrDialogs.message("Please select an input folder")
 							end
