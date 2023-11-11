@@ -13,6 +13,8 @@ local LrFtp = import 'LrFtp'
 local LrFileUtils = import 'LrFileUtils'
 local LrErrors = import 'LrErrors'
 
+local LrColor = import 'LrColor'
+
 local LrLogger = import 'LrLogger'
 local myLogger = LrLogger( 'exportLogger' )
 myLogger:enable( 'print' )
@@ -237,6 +239,7 @@ local function mainDialog()
 
 		local staticTextValue = f:static_text {
 			title = "Not started",
+			text_color = LrColor("red")
 		}
 
 		local function myCalledFunction()
@@ -371,7 +374,8 @@ local function mainDialog()
 					f:static_text {
 						alignment = "right",
 						width = LrView.share "label_width",
-						title = "Process Status: "
+						title = "Process Status: ",
+						text_color = LrColor("red")
 					},
 					staticTextValue,
 				},
@@ -424,8 +428,9 @@ local function mainDialog()
 			}
 
 			LrDialogs.presentModalDialog {
-				title = "pixid : Auto Import / Export / Uploader",
+				title = "pixid : Auto Preset / Export / Uploader",
 				contents = c,
+				actionVerb = "Need to 'Stop Interval Process' before Cancel or Close",
 			}
 
 		end)
