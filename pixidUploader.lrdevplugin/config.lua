@@ -7,3 +7,4 @@ config = {}
 -- config['ftpIsEnabled'] = false
 -- config['ftpUsername'] = ''
 -- config['ftpPassword'] = ''
+-- config['resetsInFavoriteIsApplied'] = false

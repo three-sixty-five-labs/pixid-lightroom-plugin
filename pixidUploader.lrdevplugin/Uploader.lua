@@ -13,6 +13,8 @@ local LrFtp = import 'LrFtp'
 local LrFileUtils = import 'LrFileUtils'
 local LrErrors = import 'LrErrors'
 
+local LrColor = import 'LrColor'
+
 local LrLogger = import 'LrLogger'
 local myLogger = LrLogger( 'exportLogger' )
 myLogger:enable( 'print' )
@@ -30,7 +32,7 @@ local failures = {}
 local ftpFailures = {}
 
 -- Process pictures and save them as JPEG
-local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo)
+local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo, extra)
 	LrFunctionContext.callWithContext("export", function(exportContext)
 		local progressScope = LrDialogs.showModalProgressDialog({
 			title = "Auto applying presets",
@@ -97,6 +99,24 @@ local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo)
 			end		
 		end
 
+		if extra['presetsInFavoriteIsApplied'] then
+			local presetFolders = LrApplication.developPresetFolders()
+			local presetFolder = presetFolders[1]
+			local presets = presetFolder:getDevelopPresets()
+			for _, photo in pairs(photos) do
+				local timeoutParams = {
+					timeout = 5,
+					asynchronous = true
+				}
+
+				LrCatalog:withWriteAccessDo("applying presets", function(context)
+						for _, preset in pairs(presets) do
+							photo:applyDevelopPreset(preset)
+						end
+				end, timeoutParams)
+			end
+		end
+
 		for i, rendition in exportSession:renditions(renditionParams) do
 
 			if progressScope:isCanceled() then break end -- Stop processing if the cancel button has been pressed
@@ -140,29 +160,29 @@ local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo)
 	end)
 end
 
--- Import pictures from folder where the rating is not 2 stars 
-local function importFolder(LrCatalog, folder, outputFolder, size, ftpInfo)
+-- Import pictures from folder where the rating is not 3 stars 
+local function importFolder(LrCatalog, folder, outputFolder, size, ftpInfo, extra)
 	LrTasks.startAsyncTask(function()
 		local photos = folder:getPhotos()
 		local export = {}
 
 		for _, photo in pairs(photos) do
-			if photo:getRawMetadata("rating") ~= 2 then
+			if photo:getRawMetadata("rating") ~= 3 then
 
 				local timeoutParams = {
 					timeout = 5,
 					asynchronous = true
 				}
 	
-				LrCatalog:withWriteAccessDo("Setting rating", function(context)
-					photo:setRawMetadata("rating", 2)	
+				LrCatalog:withWriteAccessDo("processing", function(context)
+					photo:setRawMetadata("rating", 3)
 					table.insert(export, photo)
 				end, timeoutParams)
 			end
 		end
 
 		if #export > 0 then
-			processPhotos(LrCatalog, export, outputFolder, size, ftpInfo)
+			processPhotos(LrCatalog, export, outputFolder, size, ftpInfo, extra)
 		end
 	end)
 end
@@ -212,8 +232,14 @@ local function mainDialog()
 			value = false,
 		}
 
+		local presetsInFavoriteIsAppliedCheckbox =  f:checkbox {
+			title = "Apply all Presets in Favorite",
+			value = false,
+		}
+
 		local staticTextValue = f:static_text {
 			title = "Not started",
+			text_color = LrColor("red")
 		}
 
 		local function myCalledFunction()
@@ -227,6 +253,7 @@ local function mainDialog()
 		if config['ftpUsername'] ~= nil  and config['ftpUsername'] ~= ''  then ftpUsernameField.value = config['ftpUsername'] end
 		if config['ftpPassword'] ~= nil  and config['ftpPassword'] ~= ''  then ftpPasswordField.value = config['ftpPassword'] end
 		if config['ftpIsEnabled'] ~= nil and config['ftpIsEnabled'] ~= '' then ftpIsEnabledCheckbox.value = config['ftpIsEnabled'] end
+		if config['resetsInFavoriteIsApplied'] ~= nil and config['resetsInFavoriteIsApplied'] ~= '' then presetsInFavoriteIsAppliedCheckbox.value = config['resetsInFavoriteIsApplied'] end
 		
 		LrTasks.startAsyncTask(function()
 			local LrCatalog = LrApplication.activeCatalog()
@@ -247,11 +274,11 @@ local function mainDialog()
 			local watcherRunning = false
 
 			-- Watcher, executes function and then sleeps x seconds using PowerShell
-			local function watch(interval, ftpInfo)
+			local function watch(interval, ftpInfo, extra)
 				LrTasks.startAsyncTask(function()
 					while watcherRunning do
 						LrDialogs.showBezel("Processing images.")
-						importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value, ftpInfo)
+						importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value, ftpInfo, extra)
 						if LrTasks.canYield() then
 							LrTasks.yield()
 						end
@@ -310,6 +337,14 @@ local function mainDialog()
 					outputFolderField
 				},
 				f:row {
+					f:static_text {
+						alignment = "right",
+						width = LrView.share "label_width",
+						title = ""
+					},
+					presetsInFavoriteIsAppliedCheckbox
+				},
+				f:row {
 					f:separator { fill_horizontal = 1 }
 				},
 				f:row {
@@ -339,7 +374,8 @@ local function mainDialog()
 					f:static_text {
 						alignment = "right",
 						width = LrView.share "label_width",
-						title = "Process Status: "
+						title = "Process Status: ",
+						text_color = LrColor("red")
 					},
 					staticTextValue,
 				},
@@ -353,7 +389,9 @@ local function mainDialog()
 								ftpInfo['isEnabled'] = ftpIsEnabledCheckbox.value
 								ftpInfo['ftpUsername'] = ftpUsernameField.value
 								ftpInfo['ftpPassword'] = ftpPasswordField.value
-								importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value, ftpInfo)
+								extra = {}
+								extra['presetsInFavoriteIsApplied'] = presetsInFavoriteIsAppliedCheckbox.value 
+								importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value, ftpInfo, extra)
 							else
 								LrDialogs.message("Please select an input folder")
 							end
@@ -370,7 +408,9 @@ local function mainDialog()
 								ftpInfo['isEnabled'] = ftpIsEnabledCheckbox.value
 								ftpInfo['ftpUsername'] = ftpUsernameField.value
 								ftpInfo['ftpPassword'] = ftpPasswordField.value
-								watch(intervalField.value, ftpInfo)
+								extra = {}
+								extra['presetsInFavoriteIsApplied'] = presetsInFavoriteIsAppliedCheckbox.value 
+								watch(intervalField.value, ftpInfo, extra)
 							else
 								LrDialogs.message("Please select an input folder")
 							end
@@ -388,8 +428,9 @@ local function mainDialog()
 			}
 
 			LrDialogs.presentModalDialog {
-				title = "pixid : Auto Import / Export / Uploader",
+				title = "pixid : Auto Preset / Export / Uploader",
 				contents = c,
+				actionVerb = "Need to 'Stop Interval Process' before Cancel or Close",
 			}
 
 		end)
