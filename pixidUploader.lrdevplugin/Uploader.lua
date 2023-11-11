@@ -30,7 +30,7 @@ local failures = {}
 local ftpFailures = {}
 
 -- Process pictures and save them as JPEG
-local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo)
+local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo, extra)
 	LrFunctionContext.callWithContext("export", function(exportContext)
 		local progressScope = LrDialogs.showModalProgressDialog({
 			title = "Auto applying presets",
@@ -97,6 +97,24 @@ local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo)
 			end		
 		end
 
+		if extra['presetsInFavoriteIsApplied'] then
+			local presetFolders = LrApplication.developPresetFolders()
+			local presetFolder = presetFolders[1]
+			local presets = presetFolder:getDevelopPresets()
+			for _, photo in pairs(photos) do
+				local timeoutParams = {
+					timeout = 5,
+					asynchronous = true
+				}
+
+				LrCatalog:withWriteAccessDo("applying presets", function(context)
+						for _, preset in pairs(presets) do
+							photo:applyDevelopPreset(preset)
+						end
+				end, timeoutParams)
+			end
+		end
+
 		for i, rendition in exportSession:renditions(renditionParams) do
 
 			if progressScope:isCanceled() then break end -- Stop processing if the cancel button has been pressed
@@ -140,17 +158,14 @@ local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo)
 	end)
 end
 
--- Import pictures from folder where the rating is not 2 stars 
+-- Import pictures from folder where the rating is not 3 stars 
 local function importFolder(LrCatalog, folder, outputFolder, size, ftpInfo, extra)
-	local presetFolders = LrApplication.developPresetFolders()
-	local presetFolder = presetFolders[1]
-	local presets = presetFolder:getDevelopPresets()
 	LrTasks.startAsyncTask(function()
 		local photos = folder:getPhotos()
 		local export = {}
 
 		for _, photo in pairs(photos) do
-			if photo:getRawMetadata("rating") ~= 2 then
+			if photo:getRawMetadata("rating") ~= 3 then
 
 				local timeoutParams = {
 					timeout = 5,
@@ -158,20 +173,14 @@ local function importFolder(LrCatalog, folder, outputFolder, size, ftpInfo, extr
 				}
 	
 				LrCatalog:withWriteAccessDo("processing", function(context)
-					if extra['presetsInFavoriteIsApplied'] then
-						for _, preset in pairs(presets) do
-							photo:applyDevelopPreset(preset)
-						end
-					end
-
-					photo:setRawMetadata("rating", 2)	
+					photo:setRawMetadata("rating", 3)
 					table.insert(export, photo)
 				end, timeoutParams)
 			end
 		end
 
 		if #export > 0 then
-			processPhotos(LrCatalog, export, outputFolder, size, ftpInfo)
+			processPhotos(LrCatalog, export, outputFolder, size, ftpInfo, extra)
 		end
 	end)
 end
