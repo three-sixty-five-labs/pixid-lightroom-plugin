@@ -198,10 +198,30 @@ local function mainDialog()
 			title = Utils.getOS()
 		}
 
-		local outputFolderField = f:edit_field {
-			immediate = true,
+		local outputFolderField = f:static_text {
+			title = ( operatingSystem == "Windows" ) and "C:\\Pictures" or Utils.getHome() .. "/Pictures",
+			value = ( operatingSystem == "Windows" ) and "C:\\Pictures" or Utils.getHome() .. "/Pictures",
 			width = 500,
-			value = ( operatingSystem == "Windows" ) and "C:\\Pictures" or Utils.getHome() .. "/Pictures" 
+			truncate = 'head', 
+		}
+
+		local selectFolderButtonField = f:push_button {
+				title = "Select Output Folder",
+				action = function()
+					local success, result = pcall(function()
+						return LrDialogs.runOpenPanel {
+								title = "Select Output Folder",
+								canChooseFiles = false,
+								canChooseDirectories = true,
+								allowsMultipleSelection = false,
+						}
+					end)
+				
+					if success and result and #result > 0 then
+						outputFolderField.value = tostring(result[1])
+						outputFolderField.title = tostring(result[1])
+					end
+				end,
 		}
 
 		local sizeField = f:combo_box {
@@ -233,7 +253,7 @@ local function mainDialog()
 		}
 
 		local presetsInFavoriteIsAppliedCheckbox =  f:checkbox {
-			title = "Apply all Presets in Favorite",
+			title = "",
 			value = false,
 		}
 
@@ -248,6 +268,7 @@ local function mainDialog()
 
 		-- Setting default value for input
 		if config['outputFolder'] ~= nil and config['outputFolder'] ~= '' then outputFolderField.value = config['outputFolder'] end
+		if config['outputFolder'] ~= nil and config['outputFolder'] ~= '' then outputFolderField.title = config['outputFolder'] end
 		if config['size'] ~= nil         and config['size'] ~= ''         then sizeField.value = config['size'] end
 		if config['interval'] ~= nil     and config['interval'] ~= ''     then intervalField.value = config['interval'] end
 		if config['ftpUsername'] ~= nil  and config['ftpUsername'] ~= ''  then ftpUsernameField.value = config['ftpUsername'] end
@@ -334,13 +355,21 @@ local function mainDialog()
 						width = LrView.share "label_width",
 						title = "Output Folder: "
 					},
-					outputFolderField
+					selectFolderButtonField
 				},
 				f:row {
 					f:static_text {
 						alignment = "right",
 						width = LrView.share "label_width",
 						title = ""
+					},
+					outputFolderField
+				},
+				f:row {
+					f:static_text {
+						alignment = "right",
+						width = LrView.share "label_width",
+						title = "Apply all presets in Favorite:"
 					},
 					presetsInFavoriteIsAppliedCheckbox
 				},
