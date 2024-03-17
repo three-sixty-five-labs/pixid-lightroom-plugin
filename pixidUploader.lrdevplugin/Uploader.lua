@@ -262,6 +262,14 @@ local function mainDialog()
 			text_color = LrColor("red")
 		}
 
+		local VERSION = require 'Info'.VERSION
+
+		local versionField = f:static_text {
+			title = string.format("Version: %d.%d.%d (Build %d)", VERSION.major, VERSION.minor, VERSION.revision, VERSION.build),
+			alignment = "left",
+			width = 500,
+	}
+
 		local function myCalledFunction()
 			staticTextValue.title = props.myObservedString
 		end
@@ -454,6 +462,12 @@ local function mainDialog()
 						end
 					}
 				},
+				f:row {
+					f:separator { fill_horizontal = 1 }
+				},
+				f:row {
+					versionField
+				},	
 			}
 
 			LrDialogs.presentModalDialog {
