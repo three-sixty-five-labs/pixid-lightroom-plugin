@@ -22,6 +22,13 @@ myLogger:enable( 'print' )
 require "config"
 require "Utils"
 
+local timerId
+
+local timeoutParams = {
+	timeout = 5,
+	asynchronous = true
+}
+
 function outputToLog( message )
 	myLogger:trace( message )
 end
@@ -33,10 +40,11 @@ local ftpFailures = {}
 
 -- Process pictures and save them as JPEG
 local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo, extra)
+	outputToLog("[PROCESS] Start Process")
 	LrFunctionContext.callWithContext("export", function(exportContext)
 		local progressScope = LrDialogs.showModalProgressDialog({
-			title = "Auto applying presets",
-			caption = "",
+			title = "Auto Export",
+			caption = "starting ...",
 			cannotCancel = false,
 			functionContext = exportContext
 		})
@@ -103,16 +111,15 @@ local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo, ext
 			local presetFolders = LrApplication.developPresetFolders()
 			local presetFolder = presetFolders[1]
 			local presets = presetFolder:getDevelopPresets()
-			for _, photo in pairs(photos) do
-				local timeoutParams = {
-					timeout = 5,
-					asynchronous = true
-				}
+			for i, photo in pairs(photos) do
+				progressScope:setCaption("Applying presets (" .. i .. "/" .. numPhotos .. ")")
+				progressScope:setPortionComplete(i - 1, numPhotos)
 
-				LrCatalog:withWriteAccessDo("applying presets", function(context)
+				LrCatalog:withWriteAccessDo("Applying presets ... ", function(context)
 						for _, preset in pairs(presets) do
 							photo:applyDevelopPreset(preset)
 						end
+						photo:setRawMetadata("rating", 1)
 				end, timeoutParams)
 			end
 		end
@@ -122,15 +129,17 @@ local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo, ext
 			if progressScope:isCanceled() then break end -- Stop processing if the cancel button has been pressed
 
 			-- Common caption for progress bar
-			local progressCaption = rendition.photo:getFormattedMetadata("fileName") .. " (" .. i .. "/" .. numPhotos .. ")"
-
+			local progressCaption = "Exporting " .. rendition.photo:getFormattedMetadata("fileName") .. " (" .. i .. "/" .. numPhotos .. ")"
 			progressScope:setPortionComplete(i - 1, numPhotos)
-			progressScope:setCaption("Processing " .. progressCaption)
+			progressScope:setCaption(progressCaption)
 
 			local success, pathOrMessage = rendition:waitForRender()
 		
 			if progressScope:isCanceled() then break end -- Check for cancellation again after photo has been rendered.
-			
+			LrCatalog:withWriteAccessDo("processing", function(context)	
+				rendition.photo:setRawMetadata("rating", 2)
+			end, timeoutParams)
+
 			if success and ftpInfo['isEnabled'] then
 
 				local filename = LrPathUtils.leafName( pathOrMessage )		
@@ -143,6 +152,9 @@ local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo, ext
 				-- When done with photo, delete temp file. There is a cleanup step that happens later,
 				-- but this will help manage space in the event of a large upload.
 				-- LrFileUtils.delete( pathOrMessage )
+				LrCatalog:withWriteAccessDo("processing", function(context)	
+					rendition.photo:setRawMetadata("rating", 3)
+				end, timeoutParams)
 			end
 
 			if progressScope:isCanceled() then break end -- Check for cancellation again after photo has been rendered.
@@ -153,38 +165,52 @@ local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo, ext
 
 		end
 
+		if LrTasks.canYield() then
+			LrTasks.yield()
+		end
+
 		if ftpInfo['isEnabled'] then
 			ftpInstance:disconnect()
 		end
 		
 	end)
+
+	if LrTasks.canYield() then
+		LrTasks.yield()
+	end
+
+	if progressScope then 
+		progressScope:done()
+	end
+	outputToLog("[PROCESS] finish process")
 end
 
 -- Import pictures from folder where the rating is not 3 stars 
 local function importFolder(LrCatalog, folder, outputFolder, size, ftpInfo, extra)
-	LrTasks.startAsyncTask(function()
-		local photos = folder:getPhotos()
-		local export = {}
+	outputToLog("[IMPORT] Start Import")
+	local photos = folder:getPhotos()
+	local photosToExport = {}
 
-		for _, photo in pairs(photos) do
-			if photo:getRawMetadata("rating") ~= 3 then
+	for _, photo in pairs(photos) do
+		local rating = photo:getRawMetadata("rating") or 0
+		if rating == 0 then	
+			table.insert(photosToExport, photo)
 
-				local timeoutParams = {
-					timeout = 5,
-					asynchronous = true
-				}
-	
-				LrCatalog:withWriteAccessDo("processing", function(context)
-					photo:setRawMetadata("rating", 3)
-					table.insert(export, photo)
-				end, timeoutParams)
-			end
+			-- if #photosToExport >= 3 then
+			-- 	break  -- Stop processing after the first three photos
+			-- end
 		end
+	end
 
-		if #export > 0 then
-			processPhotos(LrCatalog, export, outputFolder, size, ftpInfo, extra)
-		end
-	end)
+	if #photosToExport > 0 then
+		LrDialogs.showBezel(#photosToExport .. " photos to process")
+		outputToLog("[IMPORT] found " ..  #photosToExport .. " photos to process")
+		processPhotos(LrCatalog, photosToExport, outputFolder, size, ftpInfo, extra)
+	else
+		outputToLog("[IMPORT] nothing to process")
+	end
+
+outputToLog("[IMPORT] finish import")
 end
 
 -- GUI specification
@@ -229,11 +255,11 @@ local function mainDialog()
 			value = "2000"
 		}
 
-		local intervalField = f:combo_box {
-			items = {"5", "15", "30", "60", "90", "120", "180"},
-			value = "30",
-			width_in_digits = 3
-		}
+		-- local intervalField = f:combo_box {
+		-- 	items = {"1", "5", "15", "30", "60", "90", "120", "180"},
+		-- 	value = "30",
+		-- 	width_in_digits = 3
+		-- }
 
 		local ftpUsernameField = f:edit_field {
 			immediate = true,
@@ -257,9 +283,9 @@ local function mainDialog()
 			value = false,
 		}
 
-		local staticTextValue = f:static_text {
+		local statusText = f:static_text {
 			title = "Not started",
-			text_color = LrColor("red")
+			text_color = LrColor("blue")
 		}
 
 		local VERSION = require 'Info'.VERSION
@@ -271,18 +297,21 @@ local function mainDialog()
 	}
 
 		local function myCalledFunction()
-			staticTextValue.title = props.myObservedString
+			statusText.title = props.myObservedString
 		end
 
 		-- Setting default value for input
 		if config['outputFolder'] ~= nil and config['outputFolder'] ~= '' then outputFolderField.value = config['outputFolder'] end
 		if config['outputFolder'] ~= nil and config['outputFolder'] ~= '' then outputFolderField.title = config['outputFolder'] end
 		if config['size'] ~= nil         and config['size'] ~= ''         then sizeField.value = config['size'] end
-		if config['interval'] ~= nil     and config['interval'] ~= ''     then intervalField.value = config['interval'] end
 		if config['ftpUsername'] ~= nil  and config['ftpUsername'] ~= ''  then ftpUsernameField.value = config['ftpUsername'] end
 		if config['ftpPassword'] ~= nil  and config['ftpPassword'] ~= ''  then ftpPasswordField.value = config['ftpPassword'] end
 		if config['ftpIsEnabled'] ~= nil and config['ftpIsEnabled'] ~= '' then ftpIsEnabledCheckbox.value = config['ftpIsEnabled'] end
 		if config['resetsInFavoriteIsApplied'] ~= nil and config['resetsInFavoriteIsApplied'] ~= '' then presetsInFavoriteIsAppliedCheckbox.value = config['resetsInFavoriteIsApplied'] end
+		
+		local sleepSeconds
+		if config['sleep'] ~= nil and config['sleep'] ~= '' then sleepSeconds = config['sleep'] end
+
 		
 		LrTasks.startAsyncTask(function()
 			local LrCatalog = LrApplication.activeCatalog()
@@ -302,21 +331,30 @@ local function mainDialog()
 
 			local watcherRunning = false
 
-			-- Watcher, executes function and then sleeps x seconds using PowerShell
-			local function watch(interval, ftpInfo, extra)
+			local function watch(ftpInfo, extra)
+				outputToLog("[WATCH] Start Watcher")
 				LrTasks.startAsyncTask(function()
 					while watcherRunning do
-						LrDialogs.showBezel("Processing images.")
+						LrDialogs.showBezel("checking photos to process")
+						outputToLog("[WATCH] Start calling importFolder")
+
 						importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value, ftpInfo, extra)
+
 						if LrTasks.canYield() then
-							LrTasks.yield()
+								LrTasks.yield()
+								outputToLog("[WATCH] calling importFolder is done")
 						end
-						if operatingSystem == "Windows" then
-							LrTasks.execute("powershell Start-Sleep -Seconds " .. interval)
-						else
-							LrTasks.execute("sleep " .. interval)
-						end
+
+						-- Sleep using PowerShell or other platform-specific command
+						-- if operatingSystem == "Windows" then
+						-- 		LrTasks.execute("powershell Start-Sleep -Seconds " .. interval)
+						-- else
+						-- 		LrTasks.execute("sleep " .. interval)
+						-- end
+						outputToLog("[WATCH] Finishg a watch loop - Sleep between batch " .. sleepSeconds .." seconds")
+						LrTasks.sleep(sleepSeconds)
 					end
+					outputToLog("[WATCH] Exit Watcher")
 				end)
 			end
 
@@ -349,14 +387,14 @@ local function mainDialog()
 					},
 					sizeField
 				},
-				f:row {
-					f:static_text {
-						alignment = "right",
-						width = LrView.share "label_width",
-						title = "Interval (second): ",
-					},
-					intervalField
-				},
+				-- f:row {
+				-- 	f:static_text {
+				-- 		alignment = "right",
+				-- 		width = LrView.share "label_width",
+				-- 		title = "Interval (second): ",
+				-- 	},
+				-- 	intervalField
+				-- },
 				f:row {
 					f:static_text {
 						alignment = "right",
@@ -409,16 +447,19 @@ local function mainDialog()
 				f:row {
 					fill_horizontal = 1,
 					f:static_text {
+						height_in_lines = 2, -- Adjust the height as needed
+					},
+					f:static_text {
 						alignment = "right",
 						width = LrView.share "label_width",
 						title = "Process Status: ",
-						text_color = LrColor("red")
+						text_color = LrColor("blue"),
 					},
-					staticTextValue,
+					statusText,
 				},
 				f:row {
 					f:push_button {
-						title = "Process once",
+						title = "do once // ทำครั้งเดียว",
 						action = function()
 							if folderField.value ~= "" then
 								props.myObservedString = "Processed once"
@@ -435,10 +476,10 @@ local function mainDialog()
 						end
 					},
 					f:push_button {
-						title = "Interval process",
-
+						title = "continuous // ทำต่อเนื่อง",
 						action = function()
 							watcherRunning = true
+							LrDialogs.message("Alert", "ถ้าต้องการจบการทำงานให้กดปุ่ม 'Stop // หยุดทำ' \n\n Need to click 'Stop // หยุดทำ' button before OK or Cancel to close this plugin", "info")
 							if folderField.value ~= "" then
 								props.myObservedString = "Running"
 								ftpInfo = {}
@@ -447,18 +488,36 @@ local function mainDialog()
 								ftpInfo['ftpPassword'] = ftpPasswordField.value
 								extra = {}
 								extra['presetsInFavoriteIsApplied'] = presetsInFavoriteIsAppliedCheckbox.value 
-								watch(intervalField.value, ftpInfo, extra)
+
+								outputToLog("[WATCH] Start Watcher")
+								LrTasks.startAsyncTask(function()
+									while watcherRunning do
+										LrDialogs.showBezel("checking photos to process")
+										outputToLog("[WATCH] Start calling importFolder")
+				
+										importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value, ftpInfo, extra)
+				
+										if LrTasks.canYield() then
+												LrTasks.yield()
+												outputToLog("[WATCH] calling importFolder is done")
+										end
+				
+										outputToLog("[WATCH] Finishg a watch loop - Sleep between batch " .. sleepSeconds .." seconds")
+										LrTasks.sleep(sleepSeconds)
+									end
+									outputToLog("[WATCH] Exit Watcher")
+								end)
 							else
 								LrDialogs.message("Please select an input folder")
 							end
 						end
 					},
 					f:push_button {
-						title = "Stop interval process",
+						title = "Stop // หยุดทำ",
 
 						action = function()
-							watcherRunning = false
 							props.myObservedString = "Stopped after running"
+							watcherRunning = false
 						end
 					}
 				},
@@ -473,7 +532,7 @@ local function mainDialog()
 			LrDialogs.presentModalDialog {
 				title = "pixid : Auto Preset / Export / Uploader",
 				contents = c,
-				actionVerb = "Need to 'Stop Interval Process' before Cancel or Close",
+				-- actionVerb = "Need to click 'Stop Interval Process' before Cancel or Close",
 			}
 
 		end)
@@ -482,5 +541,3 @@ local function mainDialog()
 end
 
 mainDialog()
-
-
