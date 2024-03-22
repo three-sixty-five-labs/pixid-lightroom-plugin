@@ -188,10 +188,13 @@ end
 -- Import pictures from folder where the rating is not 3 stars 
 local function importFolder(LrCatalog, folder, outputFolder, size, ftpInfo, extra)
 	outputToLog("[IMPORT] Start Import")
+	outputToLog("[IMPORT] Start Import Again")	
 	local photos = folder:getPhotos()
+	outputToLog("[IMPORT] " .. #photos .. " photos found")
 	local photosToExport = {}
 
 	for _, photo in pairs(photos) do
+		outputToLog("[IMPORT] checking rating")
 		local rating = photo:getRawMetadata("rating") or 0
 		if rating == 0 then	
 			table.insert(photosToExport, photo)
@@ -307,7 +310,7 @@ local function mainDialog()
 		if config['ftpUsername'] ~= nil  and config['ftpUsername'] ~= ''  then ftpUsernameField.value = config['ftpUsername'] end
 		if config['ftpPassword'] ~= nil  and config['ftpPassword'] ~= ''  then ftpPasswordField.value = config['ftpPassword'] end
 		if config['ftpIsEnabled'] ~= nil and config['ftpIsEnabled'] ~= '' then ftpIsEnabledCheckbox.value = config['ftpIsEnabled'] end
-		if config['resetsInFavoriteIsApplied'] ~= nil and config['resetsInFavoriteIsApplied'] ~= '' then presetsInFavoriteIsAppliedCheckbox.value = config['resetsInFavoriteIsApplied'] end
+		if config['presetsInFavoriteIsApplied'] ~= nil and config['presetsInFavoriteIsApplied'] ~= '' then presetsInFavoriteIsAppliedCheckbox.value = config['presetsInFavoriteIsApplied'] end
 		
 		local sleepSeconds
 		if config['sleep'] ~= nil and config['sleep'] ~= '' then sleepSeconds = config['sleep'] end
@@ -331,32 +334,32 @@ local function mainDialog()
 
 			local watcherRunning = false
 
-			local function watch(ftpInfo, extra)
-				outputToLog("[WATCH] Start Watcher")
-				LrTasks.startAsyncTask(function()
-					while watcherRunning do
-						LrDialogs.showBezel("checking photos to process")
-						outputToLog("[WATCH] Start calling importFolder")
+			-- local function watch(ftpInfo, extra)
+			-- 	outputToLog("[WATCH] Start Watcher")
+			-- 	LrTasks.startAsyncTask(function()
+			-- 		while watcherRunning do
+			-- 			LrDialogs.showBezel("checking photos to process")
+			-- 			outputToLog("[WATCH] Start calling importFolder")
 
-						importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value, ftpInfo, extra)
+			-- 			importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value, ftpInfo, extra)
 
-						if LrTasks.canYield() then
-								LrTasks.yield()
-								outputToLog("[WATCH] calling importFolder is done")
-						end
+			-- 			if LrTasks.canYield() then
+			-- 					LrTasks.yield()
+			-- 					outputToLog("[WATCH] calling importFolder is done")
+			-- 			end
 
-						-- Sleep using PowerShell or other platform-specific command
-						-- if operatingSystem == "Windows" then
-						-- 		LrTasks.execute("powershell Start-Sleep -Seconds " .. interval)
-						-- else
-						-- 		LrTasks.execute("sleep " .. interval)
-						-- end
-						outputToLog("[WATCH] Finishg a watch loop - Sleep between batch " .. sleepSeconds .." seconds")
-						LrTasks.sleep(sleepSeconds)
-					end
-					outputToLog("[WATCH] Exit Watcher")
-				end)
-			end
+			-- 			-- Sleep using PowerShell or other platform-specific command
+			-- 			-- if operatingSystem == "Windows" then
+			-- 			-- 		LrTasks.execute("powershell Start-Sleep -Seconds " .. interval)
+			-- 			-- else
+			-- 			-- 		LrTasks.execute("sleep " .. interval)
+			-- 			-- end
+			-- 			outputToLog("[WATCH] Finishg a watch loop - Sleep between batch " .. sleepSeconds .." seconds")
+			-- 			LrTasks.sleep(sleepSeconds)
+			-- 		end
+			-- 		outputToLog("[WATCH] Exit Watcher")
+			-- 	end)
+			-- end
 
 			props:addObserver("myObservedString", myCalledFunction)
 
@@ -461,15 +464,21 @@ local function mainDialog()
 					f:push_button {
 						title = "do once // ครั้งเดียว",
 						action = function()
-							if folderField.value ~= "" then
+							if folderField.value ~= nil and folderField.value ~= "" then
 								props.myObservedString = "Processed once"
 								ftpInfo = {}
 								ftpInfo['isEnabled'] = ftpIsEnabledCheckbox.value
 								ftpInfo['ftpUsername'] = ftpUsernameField.value
 								ftpInfo['ftpPassword'] = ftpPasswordField.value
 								extra = {}
-								extra['presetsInFavoriteIsApplied'] = presetsInFavoriteIsAppliedCheckbox.value 
-								importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value, ftpInfo, extra)
+								extra['presetsInFavoriteIsApplied'] = presetsInFavoriteIsAppliedCheckbox.value
+								LrTasks.startAsyncTask(function()
+									importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value, ftpInfo, extra)
+
+									if LrTasks.canYield() then
+										LrTasks.yield()
+									end
+								end)
 							else
 								LrDialogs.message("Please select an input folder")
 							end
@@ -480,7 +489,7 @@ local function mainDialog()
 						action = function()
 							watcherRunning = true
 							LrDialogs.message("Alert", "ถ้าต้องการจบการทำงานให้กดปุ่ม 'Stop // หยุดทำ' \n\n Need to click 'Stop // หยุดทำ' button before OK or Cancel to close this plugin", "info")
-							if folderField.value ~= "" then
+							if folderField.value ~= nil and folderField.value ~= "" then
 								props.myObservedString = "Running"
 								ftpInfo = {}
 								ftpInfo['isEnabled'] = ftpIsEnabledCheckbox.value
@@ -514,7 +523,6 @@ local function mainDialog()
 					},
 					f:push_button {
 						title = "Stop // หยุด",
-
 						action = function()
 							props.myObservedString = "Stopped after running"
 							watcherRunning = false

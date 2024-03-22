@@ -7,6 +7,6 @@ config = {}
 -- config['ftpIsEnabled'] = false
 -- config['ftpUsername'] = ''
 -- config['ftpPassword'] = ''
--- config['resetsInFavoriteIsApplied'] = false
+-- config['presetsInFavoriteIsApplied'] = false
 
-config['sleep'] = 5
+config['sleep'] = 10
