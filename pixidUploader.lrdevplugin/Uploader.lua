@@ -459,7 +459,7 @@ local function mainDialog()
 				},
 				f:row {
 					f:push_button {
-						title = "do once // ทำครั้งเดียว",
+						title = "do once // ครั้งเดียว",
 						action = function()
 							if folderField.value ~= "" then
 								props.myObservedString = "Processed once"
@@ -476,7 +476,7 @@ local function mainDialog()
 						end
 					},
 					f:push_button {
-						title = "continuous // ทำต่อเนื่อง",
+						title = "continuous // ต่อเนื่อง",
 						action = function()
 							watcherRunning = true
 							LrDialogs.message("Alert", "ถ้าต้องการจบการทำงานให้กดปุ่ม 'Stop // หยุดทำ' \n\n Need to click 'Stop // หยุดทำ' button before OK or Cancel to close this plugin", "info")
@@ -513,7 +513,7 @@ local function mainDialog()
 						end
 					},
 					f:push_button {
-						title = "Stop // หยุดทำ",
+						title = "Stop // หยุด",
 
 						action = function()
 							props.myObservedString = "Stopped after running"
