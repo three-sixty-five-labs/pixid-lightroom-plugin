@@ -188,13 +188,10 @@ end
 -- Import pictures from folder where the rating is not 3 stars 
 local function importFolder(LrCatalog, folder, outputFolder, size, ftpInfo, extra)
 	outputToLog("[IMPORT] Start Import")
-	outputToLog("[IMPORT] Start Import Again")	
 	local photos = folder:getPhotos()
-	outputToLog("[IMPORT] " .. #photos .. " photos found")
 	local photosToExport = {}
 
 	for _, photo in pairs(photos) do
-		outputToLog("[IMPORT] checking rating")
 		local rating = photo:getRawMetadata("rating") or 0
 		if rating == 0 then	
 			table.insert(photosToExport, photo)
@@ -461,6 +458,9 @@ local function mainDialog()
 					statusText,
 				},
 				f:row {
+					f:static_text {
+						height_in_lines = 2, -- Adjust the height as needed
+					},
 					f:push_button {
 						title = "do once // ครั้งเดียว",
 						action = function()
