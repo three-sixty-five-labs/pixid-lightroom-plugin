@@ -252,7 +252,8 @@ local function mainDialog()
 
 		local sizeField = f:combo_box {
 			items = {"2000", "4000", "original"},
-			value = "2000"
+			value = "2000",
+			immediate = true,
 		}
 
 		-- local intervalField = f:combo_box {
@@ -276,11 +277,13 @@ local function mainDialog()
 		local ftpIsEnabledCheckbox =  f:checkbox {
 			title = "Enable FTP Upload",
 			value = false,
+			immediate = true,
 		}
 
 		local presetsInFavoriteIsAppliedCheckbox =  f:checkbox {
 			title = "",
 			value = false,
+			immediate = true,
 		}
 
 		local statusText = f:static_text {
@@ -324,7 +327,8 @@ local function mainDialog()
 			end
 
 			local folderField = f:combo_box {
-				items = folderCombo
+				items = folderCombo,
+				immediate = true,
 			}
 
 			if config['lightroomFolder'] ~= nil and config['lightroomFolder'] ~= '' then folderField.value = config['lightroomFolder'] end
