@@ -260,14 +260,12 @@ local function mainDialog()
 			immediate = true,
 			width = 100,
 			value = "",
-			immediate = true,
 		}
 
 		local ftpPasswordField = f:password_field {
 			immediate = true,
 			width = 100,
 			value = "",
-			immediate = true,
 		}	
 
 		local ftpIsEnabledCheckbox =  f:checkbox {
