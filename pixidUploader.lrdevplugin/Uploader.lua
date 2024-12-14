@@ -280,6 +280,18 @@ local function mainDialog()
 			immediate = true,
 		}
 
+		local useFileSizeLimitCheckbox =  f:checkbox {
+			title = "",
+			value = false,
+			immediate = true,
+		}
+
+		local fileSizeLimitField = f:edit_field {
+			immediate = true,
+			width = 100,
+			value = "750",
+		}
+
 		local statusText = f:static_text {
 			title = "Not started",
 			text_color = LrColor("blue")
@@ -293,7 +305,7 @@ local function mainDialog()
 			width = 500,
 	}
 
-		local function myCalledFunction()
+		local function statusUpdateFunction()
 			statusText.title = props.myObservedString
 		end
 
@@ -356,7 +368,7 @@ local function mainDialog()
 			-- 	end)
 			-- end
 
-			props:addObserver("myObservedString", myCalledFunction)
+			props:addObserver("myObservedString", statusUpdateFunction)
 
 			local c = f:column {
 				spacing = f:dialog_spacing(),
@@ -381,7 +393,7 @@ local function mainDialog()
 					f:static_text {
 						alignment = "right",
 						width = LrView.share "label_width",
-						title = "Size(px): "
+						title = "Max Width/Height(px): "
 					},
 					sizeField
 				},
@@ -416,6 +428,22 @@ local function mainDialog()
 						title = "Apply all presets in Favorite:"
 					},
 					presetsInFavoriteIsAppliedCheckbox
+				},
+				f:row {
+					f:static_text {
+						alignment = "right",
+						width = LrView.share "label_width",
+						title = "Use File Size Limit:"
+					},
+					useFileSizeLimitCheckbox
+				},
+				f:row {
+					f:static_text {
+							alignment = "right",
+							width = LrView.share "label_width",
+							title = "File Size Limit (kb):",
+					},
+					fileSizeLimitField
 				},
 				f:row {
 					f:separator { fill_horizontal = 1 }
