@@ -66,6 +66,8 @@ local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo, ext
 			LR_size_units = "pixels",
 			LR_tokens = "{{image_name}}",
 			LR_useWatermark = false,
+			LR_jpeg_useLimitSize = false,
+			LR_jpeg_limitSize = null,	
 		}
 
 		if size ~= "original" then
@@ -73,6 +75,11 @@ local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo, ext
 			exportSettings['LR_size_maxHeight'] = tonumber(size)
 			exportSettings['LR_size_maxWidth'] = tonumber(size)
 			exportSettings['LR_size_resolution'] = 300
+		end
+
+		if extra['useFileSizeLimit'] then
+			exportSettings['LR_jpeg_useLimitSize'] = true
+			exportSettings['LR_jpeg_limitSize'] = tonumber(extra['fileSizeLimit'])
 		end
 
 		exportSession = LrExportSession({
@@ -498,6 +505,9 @@ local function mainDialog()
 								ftpInfo['ftpPassword'] = ftpPasswordField.value
 								extra = {}
 								extra['presetsInFavoriteIsApplied'] = presetsInFavoriteIsAppliedCheckbox.value
+								extra['useFileSizeLimit'] = useFileSizeLimitCheckbox.value
+								extra['fileSizeLimit'] = fileSizeLimitField.value
+
 								LrTasks.startAsyncTask(function()
 									importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value, ftpInfo, extra)
 
@@ -523,6 +533,8 @@ local function mainDialog()
 								ftpInfo['ftpPassword'] = ftpPasswordField.value
 								extra = {}
 								extra['presetsInFavoriteIsApplied'] = presetsInFavoriteIsAppliedCheckbox.value 
+								extra['useFileSizeLimit'] = useFileSizeLimitCheckbox.value
+								extra['fileSizeLimit'] = fileSizeLimitField.value
 
 								outputToLog("[WATCH] Start Watcher")
 								LrTasks.startAsyncTask(function()
