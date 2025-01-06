@@ -258,7 +258,7 @@ local function mainDialog()
 		}
 
 		local sizeField = f:combo_box {
-			items = {"2000", "4000", "original"},
+			items = {"2000", "3000", "4000", "5000", "6000", "original"},
 			value = "2000",
 			immediate = true,
 		}
