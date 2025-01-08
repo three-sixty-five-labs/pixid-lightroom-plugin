@@ -66,6 +66,8 @@ local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo, ext
 			LR_size_units = "pixels",
 			LR_tokens = "{{image_name}}",
 			LR_useWatermark = false,
+			LR_jpeg_useLimitSize = false,
+			LR_jpeg_limitSize = null,	
 		}
 
 		if size ~= "original" then
@@ -73,6 +75,11 @@ local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo, ext
 			exportSettings['LR_size_maxHeight'] = tonumber(size)
 			exportSettings['LR_size_maxWidth'] = tonumber(size)
 			exportSettings['LR_size_resolution'] = 300
+		end
+
+		if extra['useFileSizeLimit'] then
+			exportSettings['LR_jpeg_useLimitSize'] = true
+			exportSettings['LR_jpeg_limitSize'] = tonumber(extra['fileSizeLimit'])
 		end
 
 		exportSession = LrExportSession({
@@ -251,7 +258,7 @@ local function mainDialog()
 		}
 
 		local sizeField = f:combo_box {
-			items = {"2000", "4000", "original"},
+			items = {"2000", "3000", "4000", "5000", "6000", "original"},
 			value = "2000",
 			immediate = true,
 		}
@@ -260,14 +267,12 @@ local function mainDialog()
 			immediate = true,
 			width = 100,
 			value = "",
-			immediate = true,
 		}
 
 		local ftpPasswordField = f:password_field {
 			immediate = true,
 			width = 100,
 			value = "",
-			immediate = true,
 		}	
 
 		local ftpIsEnabledCheckbox =  f:checkbox {
@@ -280,6 +285,18 @@ local function mainDialog()
 			title = "",
 			value = false,
 			immediate = true,
+		}
+
+		local useFileSizeLimitCheckbox =  f:checkbox {
+			title = "",
+			value = false,
+			immediate = true,
+		}
+
+		local fileSizeLimitField = f:edit_field {
+			immediate = true,
+			width = 100,
+			value = "750",
 		}
 
 		local statusText = f:static_text {
@@ -295,7 +312,7 @@ local function mainDialog()
 			width = 500,
 	}
 
-		local function myCalledFunction()
+		local function statusUpdateFunction()
 			statusText.title = props.myObservedString
 		end
 
@@ -358,7 +375,7 @@ local function mainDialog()
 			-- 	end)
 			-- end
 
-			props:addObserver("myObservedString", myCalledFunction)
+			props:addObserver("myObservedString", statusUpdateFunction)
 
 			local c = f:column {
 				spacing = f:dialog_spacing(),
@@ -383,7 +400,7 @@ local function mainDialog()
 					f:static_text {
 						alignment = "right",
 						width = LrView.share "label_width",
-						title = "Size(px): "
+						title = "Max Width/Height(px): "
 					},
 					sizeField
 				},
@@ -418,6 +435,22 @@ local function mainDialog()
 						title = "Apply all presets in Favorite:"
 					},
 					presetsInFavoriteIsAppliedCheckbox
+				},
+				f:row {
+					f:static_text {
+						alignment = "right",
+						width = LrView.share "label_width",
+						title = "Use File Size Limit:"
+					},
+					useFileSizeLimitCheckbox
+				},
+				f:row {
+					f:static_text {
+							alignment = "right",
+							width = LrView.share "label_width",
+							title = "File Size Limit (kb):",
+					},
+					fileSizeLimitField
 				},
 				f:row {
 					f:separator { fill_horizontal = 1 }
@@ -472,6 +505,9 @@ local function mainDialog()
 								ftpInfo['ftpPassword'] = ftpPasswordField.value
 								extra = {}
 								extra['presetsInFavoriteIsApplied'] = presetsInFavoriteIsAppliedCheckbox.value
+								extra['useFileSizeLimit'] = useFileSizeLimitCheckbox.value
+								extra['fileSizeLimit'] = fileSizeLimitField.value
+
 								LrTasks.startAsyncTask(function()
 									importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value, ftpInfo, extra)
 
@@ -497,6 +533,8 @@ local function mainDialog()
 								ftpInfo['ftpPassword'] = ftpPasswordField.value
 								extra = {}
 								extra['presetsInFavoriteIsApplied'] = presetsInFavoriteIsAppliedCheckbox.value 
+								extra['useFileSizeLimit'] = useFileSizeLimitCheckbox.value
+								extra['fileSizeLimit'] = fileSizeLimitField.value
 
 								outputToLog("[WATCH] Start Watcher")
 								LrTasks.startAsyncTask(function()
