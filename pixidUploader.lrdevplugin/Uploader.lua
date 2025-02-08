@@ -29,8 +29,17 @@ local timeoutParams = {
 	asynchronous = true
 }
 
-function outputToLog( message )
-	myLogger:trace( message )
+local logFilePath = LrPathUtils.child(_PLUGIN.path, "exportLog.txt")
+
+function outputToLog(message)
+    local timestamp = os.date("%Y-%m-%d %H:%M:%S")
+    local logMessage = string.format("[%s] %s", timestamp, message)
+    myLogger:trace(logMessage)
+    local logFile = io.open(logFilePath, "a")
+    if logFile then
+        logFile:write(logMessage .. "\n")
+        logFile:close()
+    end
 end
 
 local operatingSystem = Utils.getOS()
