@@ -357,33 +357,6 @@ local function mainDialog()
 
 			local watcherRunning = false
 
-			-- local function watch(ftpInfo, extra)
-			-- 	outputToLog("[WATCH] Start Watcher")
-			-- 	LrTasks.startAsyncTask(function()
-			-- 		while watcherRunning do
-			-- 			LrDialogs.showBezel("checking photos to process")
-			-- 			outputToLog("[WATCH] Start calling importFolder")
-
-			-- 			importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value, ftpInfo, extra)
-
-			-- 			if LrTasks.canYield() then
-			-- 					LrTasks.yield()
-			-- 					outputToLog("[WATCH] calling importFolder is done")
-			-- 			end
-
-			-- 			-- Sleep using PowerShell or other platform-specific command
-			-- 			-- if operatingSystem == "Windows" then
-			-- 			-- 		LrTasks.execute("powershell Start-Sleep -Seconds " .. interval)
-			-- 			-- else
-			-- 			-- 		LrTasks.execute("sleep " .. interval)
-			-- 			-- end
-			-- 			outputToLog("[WATCH] Finishg a watch loop - Sleep between batch " .. sleepSeconds .." seconds")
-			-- 			LrTasks.sleep(sleepSeconds)
-			-- 		end
-			-- 		outputToLog("[WATCH] Exit Watcher")
-			-- 	end)
-			-- end
-
 			props:addObserver("myObservedString", statusUpdateFunction)
 
 			local c = f:column {
@@ -413,14 +386,6 @@ local function mainDialog()
 					},
 					sizeField
 				},
-				-- f:row {
-				-- 	f:static_text {
-				-- 		alignment = "right",
-				-- 		width = LrView.share "label_width",
-				-- 		title = "Interval (second): ",
-				-- 	},
-				-- 	intervalField
-				-- },
 				f:row {
 					f:static_text {
 						alignment = "right",
