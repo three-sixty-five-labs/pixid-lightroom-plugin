@@ -511,23 +511,31 @@ local function mainDialog()
 								extra['fileSizeLimit'] = fileSizeLimitField.value
 
 								outputToLog("[WATCH] Start Watcher")
-								LrTasks.startAsyncTask(function()
-									while watcherRunning do
-										LrDialogs.showBezel("checking photos to process")
-										outputToLog("[WATCH] Start calling importFolder")
-				
-										importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value, ftpInfo, extra)
-				
-										if LrTasks.canYield() then
-												LrTasks.yield()
-												outputToLog("[WATCH] calling importFolder is done")
-										end
-				
-										outputToLog("[WATCH] Finishg a watch loop - Sleep between batch " .. sleepSeconds .." seconds")
-										LrTasks.sleep(sleepSeconds)
+								local function checkPhotos()
+									if not watcherRunning then
+										outputToLog("[WATCH] Exit Watcher")
+										return
 									end
-									outputToLog("[WATCH] Exit Watcher")
-								end)
+
+									LrDialogs.showBezel("checking photos to process")
+									outputToLog("[WATCH] Start calling importFolder")
+
+									importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value, ftpInfo, extra)
+
+									if LrTasks.canYield() then
+										LrTasks.yield()
+										outputToLog("[WATCH] calling importFolder is done")
+									end
+
+									outputToLog("[WATCH] Finish a watch loop - Sleep between batch " .. sleepSeconds .." seconds")
+									LrTasks.sleep(sleepSeconds)
+
+									-- Schedule the next check
+									LrTasks.startAsyncTask(checkPhotos)
+								end
+
+								-- Start the first check
+								LrTasks.startAsyncTask(checkPhotos)
 							else
 								LrDialogs.message("Please select an input folder")
 							end
