@@ -29,8 +29,17 @@ local timeoutParams = {
 	asynchronous = true
 }
 
-function outputToLog( message )
-	myLogger:trace( message )
+local logFilePath = LrPathUtils.child(_PLUGIN.path, "exportLog.txt")
+
+function outputToLog(message)
+    local timestamp = os.date("%Y-%m-%d %H:%M:%S")
+    local logMessage = string.format("[%s] %s", timestamp, message)
+    myLogger:trace(logMessage)
+    local logFile = io.open(logFilePath, "a")
+    if logFile then
+        logFile:write(logMessage .. "\n")
+        logFile:close()
+    end
 end
 
 local operatingSystem = Utils.getOS()
@@ -126,7 +135,7 @@ local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo, ext
 						for _, preset in pairs(presets) do
 							photo:applyDevelopPreset(preset)
 						end
-						photo:setRawMetadata("rating", 1)
+						photo:setRawMetadata("rating", 2)
 				end, timeoutParams)
 			end
 		end
@@ -144,7 +153,7 @@ local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo, ext
 		
 			if progressScope:isCanceled() then break end -- Check for cancellation again after photo has been rendered.
 			LrCatalog:withWriteAccessDo("processing", function(context)	
-				rendition.photo:setRawMetadata("rating", 2)
+				rendition.photo:setRawMetadata("rating", 3)
 			end, timeoutParams)
 
 			if success and ftpInfo['isEnabled'] then
@@ -160,7 +169,7 @@ local function processPhotos(LrCatalog, photos, outputFolder, size, ftpInfo, ext
 				-- but this will help manage space in the event of a large upload.
 				-- LrFileUtils.delete( pathOrMessage )
 				LrCatalog:withWriteAccessDo("processing", function(context)	
-					rendition.photo:setRawMetadata("rating", 3)
+					rendition.photo:setRawMetadata("rating", 4)
 				end, timeoutParams)
 			end
 
@@ -194,30 +203,30 @@ end
 
 -- Import pictures from folder where the rating is not 3 stars 
 local function importFolder(LrCatalog, folder, outputFolder, size, ftpInfo, extra)
-	outputToLog("[IMPORT] Start Import")
-	local photos = folder:getPhotos()
-	local photosToExport = {}
+    outputToLog("[IMPORT] Start Import")
+    local photos = folder:getPhotos()
+    local photosToExport = {}
 
-	for _, photo in pairs(photos) do
-		local rating = photo:getRawMetadata("rating") or 0
-		if rating == 0 then	
-			table.insert(photosToExport, photo)
+    for _, photo in pairs(photos) do
+        local rating = photo:getRawMetadata("rating") or 0
+        if rating == 0 then
+            -- Mark photo as "in progress"
+            LrCatalog:withWriteAccessDo("Marking photo as in progress", function(context)
+                photo:setRawMetadata("rating", 1)
+            end, timeoutParams)
+            table.insert(photosToExport, photo)
+        end
+    end
 
-			-- if #photosToExport >= 3 then
-			-- 	break  -- Stop processing after the first three photos
-			-- end
-		end
-	end
+    if #photosToExport > 0 then
+        LrDialogs.showBezel(#photosToExport .. " photos to process")
+        outputToLog("[IMPORT] found " ..  #photosToExport .. " photos to process")
+        processPhotos(LrCatalog, photosToExport, outputFolder, size, ftpInfo, extra)
+    else
+        outputToLog("[IMPORT] nothing to process")
+    end
 
-	if #photosToExport > 0 then
-		LrDialogs.showBezel(#photosToExport .. " photos to process")
-		outputToLog("[IMPORT] found " ..  #photosToExport .. " photos to process")
-		processPhotos(LrCatalog, photosToExport, outputFolder, size, ftpInfo, extra)
-	else
-		outputToLog("[IMPORT] nothing to process")
-	end
-
-outputToLog("[IMPORT] finish import")
+    outputToLog("[IMPORT] finish import")
 end
 
 -- GUI specification
@@ -348,33 +357,6 @@ local function mainDialog()
 
 			local watcherRunning = false
 
-			-- local function watch(ftpInfo, extra)
-			-- 	outputToLog("[WATCH] Start Watcher")
-			-- 	LrTasks.startAsyncTask(function()
-			-- 		while watcherRunning do
-			-- 			LrDialogs.showBezel("checking photos to process")
-			-- 			outputToLog("[WATCH] Start calling importFolder")
-
-			-- 			importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value, ftpInfo, extra)
-
-			-- 			if LrTasks.canYield() then
-			-- 					LrTasks.yield()
-			-- 					outputToLog("[WATCH] calling importFolder is done")
-			-- 			end
-
-			-- 			-- Sleep using PowerShell or other platform-specific command
-			-- 			-- if operatingSystem == "Windows" then
-			-- 			-- 		LrTasks.execute("powershell Start-Sleep -Seconds " .. interval)
-			-- 			-- else
-			-- 			-- 		LrTasks.execute("sleep " .. interval)
-			-- 			-- end
-			-- 			outputToLog("[WATCH] Finishg a watch loop - Sleep between batch " .. sleepSeconds .." seconds")
-			-- 			LrTasks.sleep(sleepSeconds)
-			-- 		end
-			-- 		outputToLog("[WATCH] Exit Watcher")
-			-- 	end)
-			-- end
-
 			props:addObserver("myObservedString", statusUpdateFunction)
 
 			local c = f:column {
@@ -404,14 +386,6 @@ local function mainDialog()
 					},
 					sizeField
 				},
-				-- f:row {
-				-- 	f:static_text {
-				-- 		alignment = "right",
-				-- 		width = LrView.share "label_width",
-				-- 		title = "Interval (second): ",
-				-- 	},
-				-- 	intervalField
-				-- },
 				f:row {
 					f:static_text {
 						alignment = "right",
@@ -537,23 +511,31 @@ local function mainDialog()
 								extra['fileSizeLimit'] = fileSizeLimitField.value
 
 								outputToLog("[WATCH] Start Watcher")
-								LrTasks.startAsyncTask(function()
-									while watcherRunning do
-										LrDialogs.showBezel("checking photos to process")
-										outputToLog("[WATCH] Start calling importFolder")
-				
-										importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value, ftpInfo, extra)
-				
-										if LrTasks.canYield() then
-												LrTasks.yield()
-												outputToLog("[WATCH] calling importFolder is done")
-										end
-				
-										outputToLog("[WATCH] Finishg a watch loop - Sleep between batch " .. sleepSeconds .." seconds")
-										LrTasks.sleep(sleepSeconds)
+								local function checkPhotos()
+									if not watcherRunning then
+										outputToLog("[WATCH] Exit Watcher")
+										return
 									end
-									outputToLog("[WATCH] Exit Watcher")
-								end)
+
+									LrDialogs.showBezel("checking photos to process")
+									outputToLog("[WATCH] Start calling importFolder")
+
+									importFolder(LrCatalog, catalogFolders[folderIndex[folderField.value]], outputFolderField.value, sizeField.value, ftpInfo, extra)
+
+									if LrTasks.canYield() then
+										LrTasks.yield()
+										outputToLog("[WATCH] calling importFolder is done")
+									end
+
+									outputToLog("[WATCH] Finish a watch loop - Sleep between batch " .. sleepSeconds .." seconds")
+									LrTasks.sleep(sleepSeconds)
+
+									-- Schedule the next check
+									LrTasks.startAsyncTask(checkPhotos)
+								end
+
+								-- Start the first check
+								LrTasks.startAsyncTask(checkPhotos)
 							else
 								LrDialogs.message("Please select an input folder")
 							end

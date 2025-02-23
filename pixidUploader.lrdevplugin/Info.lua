@@ -31,6 +31,6 @@ return {
 		file = "Uploader.lua",		
 	}},
 
-	VERSION = { major=0, minor=4, revision=0, build=20241215, },
+	VERSION = { major=0, minor=5, revision=0, build=20250209, },
 
 }
