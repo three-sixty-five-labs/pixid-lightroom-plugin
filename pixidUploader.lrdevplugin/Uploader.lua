@@ -324,6 +324,8 @@ local function mainDialog()
 		if config['ftpPassword'] ~= nil  and config['ftpPassword'] ~= ''  then ftpPasswordField.value = config['ftpPassword'] end
 		if config['ftpIsEnabled'] ~= nil and config['ftpIsEnabled'] ~= '' then ftpIsEnabledCheckbox.value = config['ftpIsEnabled'] end
 		if config['presetsInFavoriteIsApplied'] ~= nil and config['presetsInFavoriteIsApplied'] ~= '' then presetsInFavoriteIsAppliedCheckbox.value = config['presetsInFavoriteIsApplied'] end
+		if config['useFileSizeLimit'] ~= nil and config['useFileSizeLimit'] ~= '' then useFileSizeLimitCheckbox.value = config['useFileSizeLimit'] end
+		if config['fileSizeLimitKB'] ~= nil and config['fileSizeLimitKB'] ~= '' then fileSizeLimitField.value = config['fileSizeLimitKB'] end
 		
 		local sleepSeconds
 		if config['sleep'] ~= nil and config['sleep'] ~= '' then sleepSeconds = config['sleep'] end
